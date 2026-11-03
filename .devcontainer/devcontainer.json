@@ -12,10 +12,6 @@
       ]
     }
   },
-  "mounts": [
-    "source=${localEnv:HOME}/.cargo,target=/root/.cargo,type=bind",
-    "source=${localEnv:HOME}/.gradle,target=/root/.gradle,type=bind"
-  ],
   "runArgs": [
     "--network=host",
     "--privileged"
