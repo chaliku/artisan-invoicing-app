@@ -1,20 +1,28 @@
 {
   "name": "Tauri Android Dev",
-  "build": {
-    "dockerfile": "../Containerfile",
-    "context": ".."
-  },
+  "image": "localhost/plumber-env",
   "customizations": {
     "vscode": {
       "extensions": [
         "rust-lang.rust-analyzer",
         "tauri-apps.tauri-vscode"
-      ]
+      ],
+      "settings": {
+        "dev.containers.mountWaylandSocket": false
+      }
     }
+  },
+  "containerEnv": {
+    "WEBKIT_DISABLE_COMPOSITING_MODE": "1",
+    "WEBKIT_DISABLE_DMABUF_RENDERER": "1",
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "GDK_BACKEND": "x11"
   },
   "runArgs": [
     "--network=host",
-    "--privileged"
+    "--privileged",
+    "--security-opt", "label=disable",
+    "--device", "/dev/dri"
   ],
   "remoteUser": "root"
 }
