@@ -23,6 +23,7 @@
   let error = $state("");
   let success = $state("");
   let parts = $state<any[]>([]);
+  let isSaving = $state(false);
 
   onMount(async () => {
     const dateResult = await commands.currentDateDmy();
@@ -92,6 +93,10 @@
       return;
     }
 
+    isSaving = true;
+    error = "";
+    success = "";
+
     try {
       const result = await commands.saveInvoice(
         {
@@ -105,7 +110,6 @@
 
       if (result.status === "ok") {
         success = "تم حفظ الفاتورة بنجاح";
-        error = "";
         setTimeout(() => {
           clientName = "";
           items = [{ name: "", price: 0, receipt_image_path: null, note: "" }];
@@ -118,6 +122,8 @@
       }
     } catch (e) {
       error = "خطأ في الاتصال";
+    } finally {
+      isSaving = false;
     }
   }
 
@@ -144,6 +150,43 @@
     >
   </div>
 
+  <!-- زر الاختبار المؤقت -->
+  <button
+    style="width: 100%; background: #6f3c39; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; margin-bottom: 1.5rem; font-size: 1rem; font-weight: bold; border: none;"
+    onclick={async () => {
+      try {
+        const dummyInvoice = {
+          client_name: "Ahmed",
+          items: [
+            {
+              name: "Robinet",
+              price: 500.0,
+              receipt_image_path: null,
+              note: null,
+            },
+          ],
+          labor_fee: 1500.0,
+          transport_fee: 200.0,
+          total: 2200.0,
+        };
+        const res = await commands.generateInvoicePdf(
+          dummyInvoice,
+          "Facture",
+          "07/11/2026",
+        );
+        if (res.status === "ok") {
+          alert("نجاح! الملف في: " + res.data);
+        } else {
+          alert("خطأ: " + JSON.stringify(res.error));
+        }
+      } catch (e) {
+        alert("خطأ في الاتصال: " + String(e));
+      }
+    }}
+  >
+    اختبار التصميم الاحترافي (PDF)
+  </button>
+
   <div class="date-display">التاريخ: {date}</div>
 
   {#if error}
@@ -166,9 +209,10 @@
       />
       <small
         style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;"
-        >يرجى كتابة الاسم بالأحرف اللاتينية لكي يظهر بشكل صحيح في الفاتورة
-        المطبوعة.</small
       >
+        يرجى كتابة الاسم بالأحرف اللاتينية لكي يظهر بشكل صحيح في الفاتورة
+        المطبوعة.
+      </small>
     </div>
   </div>
 
@@ -201,9 +245,10 @@
           </select>
           <small
             style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;"
-            >تذكر: الفاتورة تطبع باللاتينية. استخدم صورة القطعة لكتابة الاسم
-            العربي إن لزم.</small
           >
+            تذكر: الفاتورة تطبع باللاتينية. استخدم صورة القطعة لكتابة الاسم
+            العربي إن لزم.
+          </small>
         </div>
 
         {#if item.name}
@@ -252,16 +297,13 @@
     <span class="total-amount">{formatPrice(total)}</span>
   </div>
 
-  <button class="save-btn" onclick={saveInvoice}>حفظ الفاتورة</button>
+  <button class="save-btn" onclick={saveInvoice} disabled={isSaving}>
+    {isSaving ? "⏳ جاري الحفظ..." : "حفظ الفاتورة"}
+  </button>
 </div>
 
 <style>
-  /* نفس الستايل السابق... */
-  :global(body) {
-    background-color: #e3e3db;
-    margin: 0;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  }
+  /* لا نحتاج :global(body) هنا لأننا في +layout.svelte */
 
   .container {
     max-width: 800px;
@@ -310,6 +352,12 @@
     opacity: 0.85;
   }
 
+  .save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* الحقول: كريمي افتراضي، أبيض عند التركيز */
   input,
   select {
     width: 100%;
@@ -317,16 +365,18 @@
     border: 1px solid #d16a6c;
     border-radius: 4px;
     font-size: 1rem;
-    background: #f9f9f9;
+    background: #e3e3db !important;
     box-sizing: border-box;
     color: #6c6d6c;
+    transition: all 0.2s ease;
   }
 
   input:focus,
   select:focus {
     outline: none;
     border-color: #f14345;
-    background: #ffffff;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(241, 67, 69, 0.1);
   }
 
   .hint {
@@ -335,8 +385,9 @@
     margin-top: 0.25rem;
   }
 
+  /* الحاويات: أبيض دافئ #FDFCF8 */
   .date-display {
-    background: white;
+    background: #fdfcf8;
     padding: 0.75rem;
     border-radius: 4px;
     margin-bottom: 1.5rem;
@@ -362,7 +413,7 @@
   }
 
   .form-section {
-    background: white;
+    background: #fdfcf8; /* الأبيض الدافئ */
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -384,12 +435,13 @@
     font-weight: 600;
   }
 
+  /* البطاقة الداخلية: بيضاء ناصعة لتبرز داخل الحاوية الدافئة */
   .item-card {
     border: 1px solid #e3e3db;
     border-radius: 6px;
     padding: 1rem;
     margin-bottom: 1rem;
-    background: #fafafa;
+    background: #ffffff;
   }
 
   .item-header {

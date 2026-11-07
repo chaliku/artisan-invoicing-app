@@ -173,59 +173,36 @@
         dir="ltr"
         style="text-align: left;"
       />
-      <small
-        style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;"
-        >اكتب الاسم باللاتينية لكي يظهر في PDF.</small
-      >
+      <small style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;">
+        اكتب الاسم باللاتينية لكي يظهر في PDF.
+      </small>
     </div>
 
     <div class="form-row">
       <div class="form-group">
         <label>الحد الأدنى (اختياري)</label>
-        <input
-          type="number"
-          bind:value={lowBound}
-          placeholder="0"
-          step="0.01"
-        />
+        <input type="number" bind:value={lowBound} placeholder="0" step="0.01" />
       </div>
 
       <div class="form-group">
         <label>الحد الأقصى (اختياري)</label>
-        <input
-          type="number"
-          bind:value={highBound}
-          placeholder="0"
-          step="0.01"
-        />
+        <input type="number" bind:value={highBound} placeholder="0" step="0.01" />
       </div>
     </div>
 
     <div class="form-group">
       <label>صورة القطعة (اختياري)</label>
       <div class="image-upload-row">
-        <button
-          type="button"
-          class="btn-secondary"
-          onclick={pickImage}
-          disabled={pickingImage}
-        >
+        <button type="button" class="btn-secondary" onclick={pickImage} disabled={pickingImage}>
           {pickingImage ? "جاري الاختيار..." : "اختيار صورة"}
         </button>
         {#if imagePath}
           <span class="image-status">تم اختيار صورة بنجاح ✔</span>
-          <button
-            type="button"
-            class="btn-danger-small"
-            onclick={() => (imagePath = null)}>إزالة</button
-          >
+          <button type="button" class="btn-danger-small" onclick={() => (imagePath = null)}>إزالة</button>
         {/if}
       </div>
-      <small
-        style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;"
-      >
-        💡 ملاحظة: يمكنك كتابة أو رسم الاسم العربي على الصورة (مثل اسم علبة
-        القطعة) لكي يراه العميل في الفاتورة، لأن الفاتورة تطبع باللاتينية فقط.
+      <small style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;">
+        💡 ملاحظة: يمكنك كتابة أو رسم الاسم العربي على الصورة لكي يراه العميل في الفاتورة.
       </small>
     </div>
 
@@ -261,7 +238,7 @@
               <td>
                 {#if part.image_path}
                   <img
-                    src={`asset://localhost/${part.image_path.replace(/\\/g, "/")}`}
+                    src={`asset://localhost/${part.image_path.replace(/\\/g, '/')}`}
                     alt={part.name}
                     class="thumbnail"
                   />
@@ -273,12 +250,8 @@
               <td>{part.low_bound ?? "—"}</td>
               <td>{part.high_bound ?? "—"}</td>
               <td class="actions">
-                <button class="btn-edit" onclick={() => startEdit(part)}
-                  >تعديل</button
-                >
-                <button class="btn-delete" onclick={() => deletePart(part.id)}
-                  >حذف</button
-                >
+                <button class="btn-edit" onclick={() => startEdit(part)}>تعديل</button>
+                <button class="btn-delete" onclick={() => deletePart(part.id)}>حذف</button>
               </td>
             </tr>
           {/each}
@@ -289,12 +262,7 @@
 </div>
 
 <style>
-  /* نفس الستايل السابق... */
-  :global(body) {
-    background-color: #e3e3db;
-    margin: 0;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  }
+  /* لا نحتاج :global(body) هنا */
 
   .container {
     max-width: 900px;
@@ -311,19 +279,13 @@
     margin-bottom: 2rem;
   }
 
-  h1,
-  h2 {
+  h1, h2 {
     color: #6c6d6c;
     margin: 0;
   }
 
-  h1 {
-    font-size: 2rem;
-  }
-  h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; margin-bottom: 1rem; }
 
   .back-btn {
     background: #6f3c39;
@@ -336,43 +298,22 @@
     font-weight: 600;
   }
 
-  .back-btn:hover {
-    opacity: 0.9;
-  }
+  .back-btn:hover { opacity: 0.9; }
 
-  .error {
-    background: #fee;
-    color: #c33;
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    border: 1px solid #fcc;
-  }
-  .success {
-    background: #efe;
-    color: #363;
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    border: 1px solid #cfc;
-  }
+  .error { background: #fee; color: #c33; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #fcc; }
+  .success { background: #efe; color: #363; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #cfc; }
 
+  /* الحاويات: أبيض دافئ #FDFCF8 */
   .form {
-    background: white;
+    background: #fdfcf8;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     margin-bottom: 2rem;
   }
 
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
+  .form-group { margin-bottom: 1rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
   label {
     display: block;
@@ -381,22 +322,24 @@
     font-weight: 600;
   }
 
+  /* الحقول: كريمي افتراضي، أبيض عند التركيز */
   input {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid #d16a6c;
     border-radius: 4px;
     font-size: 1rem;
-    direction: rtl;
-    background: #f9f9f9;
+    background: #e3e3db !important;
     box-sizing: border-box;
     color: #6c6d6c;
+    transition: all 0.2s ease;
   }
 
   input:focus {
     outline: none;
     border-color: #f14345;
-    background: #ffffff;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(241, 67, 69, 0.1);
   }
 
   .image-upload-row {
@@ -436,9 +379,7 @@
     font-size: 1rem;
     font-weight: 600;
   }
-  .btn-primary:hover {
-    opacity: 0.9;
-  }
+  .btn-primary:hover { opacity: 0.9; }
 
   .btn-secondary {
     background: transparent;
@@ -450,28 +391,18 @@
     font-size: 1rem;
     font-weight: 600;
   }
-  .btn-secondary:hover {
-    background: #f5f5f5;
-  }
+  .btn-secondary:hover { background: #f5f5f5; }
 
   .parts-list {
-    background: white;
+    background: #fdfcf8;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
 
-  .empty {
-    text-align: center;
-    color: #d16a6c;
-    padding: 2rem;
-  }
+  .empty { text-align: center; color: #d16a6c; padding: 2rem; }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-  }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 
   th {
     background: #f4f1ea;
@@ -496,14 +427,9 @@
     border: 1px solid #e3e3db;
   }
 
-  .no-image {
-    color: #aaa;
-  }
+  .no-image { color: #aaa; }
 
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-  }
+  .actions { display: flex; gap: 0.5rem; }
 
   .btn-edit {
     background: #f14345;
@@ -514,9 +440,7 @@
     cursor: pointer;
     font-size: 0.875rem;
   }
-  .btn-edit:hover {
-    opacity: 0.9;
-  }
+  .btn-edit:hover { opacity: 0.9; }
 
   .btn-delete {
     background: transparent;
@@ -527,7 +451,5 @@
     cursor: pointer;
     font-size: 0.875rem;
   }
-  .btn-delete:hover {
-    background: rgba(241, 67, 69, 0.1);
-  }
+  .btn-delete:hover { background: rgba(241, 67, 69, 0.1); }
 </style>
