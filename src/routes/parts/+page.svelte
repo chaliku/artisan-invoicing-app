@@ -262,8 +262,6 @@
 </div>
 
 <style>
-  /* لا نحتاج :global(body) هنا */
-
   .container {
     max-width: 900px;
     margin: 0 auto;
@@ -280,35 +278,40 @@
   }
 
   h1, h2 {
-    color: #6c6d6c;
+    color: #6f3c39;
     margin: 0;
   }
 
-  h1 { font-size: 2rem; }
-  h2 { font-size: 1.5rem; margin-bottom: 1rem; }
+  h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+  h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
 
-  .back-btn {
-    background: #6f3c39;
+  .back-btn, .btn-primary {
+    background: #f14345;
     color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
+    border: 2px solid #6f3c39;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: 4px 4px 0px 0px #6f3c39;
+    transition: all 0.1s ease;
   }
 
-  .back-btn:hover { opacity: 0.9; }
+  .back-btn:active, .btn-primary:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px #6f3c39;
+  }
 
-  .error { background: #fee; color: #c33; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #fcc; }
-  .success { background: #efe; color: #363; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #cfc; }
+  .error { background: #fee; color: #c33; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; border: 2px solid #c33; font-weight: 600; }
+  .success { background: #efe; color: #363; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; border: 2px solid #363; font-weight: 600; }
 
-  /* الحاويات: أبيض دافئ #FDFCF8 */
   .form {
-    background: #fdfcf8;
+    background: #FDFCF8;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 2px solid #6f3c39;
+    box-shadow: 6px 6px 0px 0px #6f3c39;
     margin-bottom: 2rem;
   }
 
@@ -319,27 +322,26 @@
     display: block;
     color: #6c6d6c;
     margin-bottom: 0.5rem;
-    font-weight: 600;
+    font-weight: 700;
   }
 
-  /* الحقول: كريمي افتراضي، أبيض عند التركيز */
   input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #d16a6c;
-    border-radius: 4px;
+    border: 2px solid #6f3c39;
+    border-radius: 6px;
     font-size: 1rem;
     background: #e3e3db !important;
     box-sizing: border-box;
     color: #6c6d6c;
+    font-weight: 500;
     transition: all 0.2s ease;
   }
 
   input:focus {
     outline: none;
-    border-color: #f14345;
     background: #ffffff !important;
-    box-shadow: 0 0 0 3px rgba(241, 67, 69, 0.1);
+    box-shadow: 4px 4px 0px 0px rgba(241, 67, 69, 0.3);
   }
 
   .image-upload-row {
@@ -351,7 +353,7 @@
   .image-status {
     color: #4caf50;
     font-size: 0.9rem;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .btn-danger-small {
@@ -361,6 +363,7 @@
     cursor: pointer;
     font-size: 0.875rem;
     text-decoration: underline;
+    font-weight: 700;
   }
 
   .form-actions {
@@ -369,54 +372,50 @@
     margin-top: 1rem;
   }
 
-  .btn-primary {
-    background: #f14345;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-  .btn-primary:hover { opacity: 0.9; }
-
   .btn-secondary {
     background: transparent;
-    color: #6c6d6c;
-    border: 1px solid #6c6d6c;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
+    color: #6f3c39;
+    border: 2px solid #6f3c39;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: 4px 4px 0px 0px #6f3c39;
+    transition: all 0.1s ease;
   }
-  .btn-secondary:hover { background: #f5f5f5; }
+
+  .btn-secondary:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px #6f3c39;
+  }
 
   .parts-list {
-    background: #fdfcf8;
+    background: #FDFCF8;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 2px solid #6f3c39;
+    box-shadow: 6px 6px 0px 0px #6f3c39;
   }
 
-  .empty { text-align: center; color: #d16a6c; padding: 2rem; }
+  .empty { text-align: center; color: #d16a6c; padding: 2rem; font-weight: 700; }
 
   table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 
   th {
-    background: #f4f1ea;
-    color: #6c6d6c;
+    background: #e3e3db;
+    color: #6f3c39;
     padding: 0.75rem;
     text-align: right;
-    font-weight: 600;
-    border-bottom: 2px solid #e3e3db;
+    font-weight: 800;
+    border-bottom: 2px solid #6f3c39;
   }
 
   td {
     padding: 0.75rem;
     border-bottom: 1px solid #e3e3db;
     color: #6c6d6c;
+    font-weight: 500;
   }
 
   .thumbnail {
@@ -424,7 +423,7 @@
     height: 40px;
     object-fit: cover;
     border-radius: 4px;
-    border: 1px solid #e3e3db;
+    border: 2px solid #6f3c39;
   }
 
   .no-image { color: #aaa; }
@@ -434,22 +433,34 @@
   .btn-edit {
     background: #f14345;
     color: white;
-    border: none;
-    padding: 0.5rem 1rem;
+    border: 2px solid #6f3c39;
+    padding: 0.4rem 0.8rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
+    font-weight: 700;
+    box-shadow: 2px 2px 0px 0px #6f3c39;
   }
-  .btn-edit:hover { opacity: 0.9; }
+
+  .btn-edit:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0px 0px 0px 0px #6f3c39;
+  }
 
   .btn-delete {
     background: transparent;
     color: #f14345;
-    border: 1px solid #f14345;
-    padding: 0.5rem 1rem;
+    border: 2px solid #f14345;
+    padding: 0.4rem 0.8rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
+    font-weight: 700;
+    box-shadow: 2px 2px 0px 0px #f14345;
   }
-  .btn-delete:hover { background: rgba(241, 67, 69, 0.1); }
+
+  .btn-delete:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0px 0px 0px 0px #f14345;
+  }
 </style>

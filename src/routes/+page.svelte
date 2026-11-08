@@ -145,35 +145,22 @@
 <div class="container">
   <div class="header">
     <h1>إنشاء فاتورة جديدة</h1>
-    <button class="manage-parts-btn" onclick={() => goto("/parts")}
-      >إدارة القطع</button
-    >
+    <button class="manage-parts-btn" onclick={() => goto("/parts")}>إدارة القطع</button>
   </div>
 
   <!-- زر الاختبار المؤقت -->
   <button
-    style="width: 100%; background: #6f3c39; color: white; padding: 1rem; border-radius: 8px; cursor: pointer; margin-bottom: 1.5rem; font-size: 1rem; font-weight: bold; border: none;"
+    class="test-pdf-btn"
     onclick={async () => {
       try {
         const dummyInvoice = {
           client_name: "Ahmed",
-          items: [
-            {
-              name: "Robinet",
-              price: 500.0,
-              receipt_image_path: null,
-              note: null,
-            },
-          ],
+          items: [{ name: "Robinet", price: 500.0, receipt_image_path: null, note: null }],
           labor_fee: 1500.0,
           transport_fee: 200.0,
-          total: 2200.0,
+          total: 2200.0
         };
-        const res = await commands.generateInvoicePdf(
-          dummyInvoice,
-          "Facture",
-          "07/11/2026",
-        );
+        const res = await commands.generateInvoicePdf(dummyInvoice, "Facture", "07/11/2026");
         if (res.status === "ok") {
           alert("نجاح! الملف في: " + res.data);
         } else {
@@ -207,11 +194,8 @@
         dir="ltr"
         style="text-align: left;"
       />
-      <small
-        style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;"
-      >
-        يرجى كتابة الاسم بالأحرف اللاتينية لكي يظهر بشكل صحيح في الفاتورة
-        المطبوعة.
+      <small style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;">
+        يرجى كتابة الاسم بالأحرف اللاتينية لكي يظهر بشكل صحيح في الفاتورة المطبوعة.
       </small>
     </div>
   </div>
@@ -224,9 +208,7 @@
         <div class="item-header">
           <span>قطعة #{index + 1}</span>
           {#if items.length > 1}
-            <button class="remove-btn" onclick={() => removeItem(index)}
-              >حذف</button
-            >
+            <button class="remove-btn" onclick={() => removeItem(index)}>حذف</button>
           {/if}
         </div>
 
@@ -243,11 +225,8 @@
               <option value={part.name}>{part.name}</option>
             {/each}
           </select>
-          <small
-            style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;"
-          >
-            تذكر: الفاتورة تطبع باللاتينية. استخدم صورة القطعة لكتابة الاسم
-            العربي إن لزم.
+          <small style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;">
+            تذكر: الفاتورة تطبع باللاتينية. استخدم صورة القطعة لكتابة الاسم العربي إن لزم.
           </small>
         </div>
 
@@ -303,12 +282,10 @@
 </div>
 
 <style>
-  /* لا نحتاج :global(body) هنا لأننا في +layout.svelte */
-
   .container {
-    max-width: 800px;
+    max-width: 750px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.5rem;
     direction: rtl;
     color: #6c6d6c;
   }
@@ -317,186 +294,200 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
   }
 
-  h1,
-  h2 {
-    color: #6c6d6c;
+  h1, h2 {
+    color: #6f3c39;
     margin: 0;
   }
 
-  h1 {
-    font-size: 2rem;
-  }
-  h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
+  h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.5px; }
+  h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.75rem; }
 
-  .manage-parts-btn,
-  .save-btn {
+  /* الأزرار */
+  .manage-parts-btn, .save-btn, .test-pdf-btn {
     background: #f14345;
     color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
+    border: 2px solid #6f3c39;
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    transition: opacity 0.2s;
+    font-size: 0.95rem;
+    font-weight: 700;
+    box-shadow: 4px 4px 0px 0px #6f3c39;
+    transition: all 0.1s ease;
   }
 
-  .manage-parts-btn:hover,
-  .save-btn:hover {
-    opacity: 0.85;
+  /* زر الاختبار: أصغر وأقل بروزاً */
+  .test-pdf-btn {
+    width: 100%;
+    background: #6f3c39;
+    color: #FDFCF8;
+    margin-bottom: 1.25rem;
+    padding: 0.7rem;
+    font-size: 0.95rem;
+  }
+
+  .manage-parts-btn:active, .save-btn:active, .test-pdf-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px #6f3c39;
+  }
+
+  /* زر الحفظ: أصبح بعرض كامل ليتوازن مع الزر العلوي */
+  .save-btn {
+    width: 100%;
+    padding: 0.85rem;
+    font-size: 1.1rem;
   }
 
   .save-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: 4px 4px 0px 0px #6f3c39;
   }
 
-  /* الحقول: كريمي افتراضي، أبيض عند التركيز */
-  input,
-  select {
+  /* الحقول */
+  input, select {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d16a6c;
-    border-radius: 4px;
-    font-size: 1rem;
+    padding: 0.7rem;
+    border: 2px solid #6f3c39;
+    border-radius: 6px;
+    font-size: 0.95rem;
     background: #e3e3db !important;
     box-sizing: border-box;
     color: #6c6d6c;
+    font-weight: 500;
     transition: all 0.2s ease;
   }
 
-  input:focus,
-  select:focus {
+  input:focus, select:focus {
     outline: none;
-    border-color: #f14345;
     background: #ffffff !important;
-    box-shadow: 0 0 0 3px rgba(241, 67, 69, 0.1);
+    box-shadow: 4px 4px 0px 0px rgba(241, 67, 69, 0.3);
   }
 
   .hint {
     color: #d16a6c;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     margin-top: 0.25rem;
-  }
-
-  /* الحاويات: أبيض دافئ #FDFCF8 */
-  .date-display {
-    background: #fdfcf8;
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 1.5rem;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  }
-
-  .error,
-  .success {
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-  }
-  .error {
-    background: #fee;
-    color: #c33;
-    border: 1px solid #fcc;
-  }
-  .success {
-    background: #efe;
-    color: #363;
-    border: 1px solid #cfc;
-  }
-
-  .form-section {
-    background: #fdfcf8; /* الأبيض الدافئ */
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    margin-bottom: 1.5rem;
-  }
-
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
     font-weight: 600;
   }
 
-  /* البطاقة الداخلية: بيضاء ناصعة لتبرز داخل الحاوية الدافئة */
-  .item-card {
-    border: 1px solid #e3e3db;
+  /* الحاويات */
+  .date-display {
+    background: #FDFCF8;
+    padding: 0.6rem 0.75rem;
     border-radius: 6px;
-    padding: 1rem;
+    margin-bottom: 1.25rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 2px solid #6f3c39;
+    box-shadow: 4px 4px 0px 0px #6f3c39;
+  }
+
+  .error, .success {
+    padding: 0.85rem;
+    border-radius: 6px;
     margin-bottom: 1rem;
+    border: 2px solid;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .error { background: #fee; color: #c33; border-color: #c33; }
+  .success { background: #efe; color: #363; border-color: #363; }
+
+  .form-section {
+    background: #FDFCF8;
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 2px solid #6f3c39;
+    box-shadow: 6px 6px 0px 0px #6f3c39;
+    margin-bottom: 1.25rem;
+  }
+
+  .form-group { margin-bottom: 0.85rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+
+  label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .item-card {
+    border: 2px solid #6f3c39;
+    border-radius: 6px;
+    padding: 0.85rem;
+    margin-bottom: 0.85rem;
     background: #ffffff;
+    box-shadow: 3px 3px 0px 0px #6f3c39;
   }
 
   .item-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-    font-weight: 600;
+    margin-bottom: 0.85rem;
+    font-weight: 700;
+    font-size: 0.95rem;
   }
 
   .remove-btn {
     background: transparent;
     color: #f14345;
-    border: 1px solid #f14345;
-    padding: 0.25rem 0.75rem;
+    border: 2px solid #f14345;
+    padding: 0.2rem 0.6rem;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: all 0.1s;
   }
 
-  .remove-btn:hover {
-    background: rgba(241, 67, 69, 0.1);
+  .remove-btn:active {
+    transform: translate(2px, 2px);
   }
 
   .add-item-btn {
     width: 100%;
-    background: transparent;
-    color: #f14345;
-    border: 2px dashed #f14345;
-    padding: 0.75rem;
-    border-radius: 4px;
+    background: #e3e3db;
+    color: #6f3c39;
+    border: 2px dashed #6f3c39;
+    padding: 0.65rem;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 700;
+    transition: all 0.1s;
   }
 
-  .add-item-btn:hover {
-    background: rgba(241, 67, 69, 0.05);
+  .add-item-btn:active {
+    transform: translate(2px, 2px);
   }
 
+  /* صندوق المجموع: أصغر وأكثر توازناً */
   .total-display {
     background: #6f3c39;
     color: white;
-    padding: 1.5rem;
+    padding: 1.1rem 1.25rem;
     border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    border: 2px solid #6f3c39;
+    box-shadow: 6px 6px 0px 0px #1a1a1a;
   }
 
   .total-amount {
     font-size: 1.5rem;
-    color: #d16a6c;
+    color: #f14345;
+    font-weight: 800;
+    text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
   }
 </style>
