@@ -20,7 +20,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2.0"
 rusqlite = { version = "0.41", features = ["bundled"] }
-printpdf = "0.7.0"
+printpdf = { version = "0.7.0", features = ["embedded_images"] }
+image = "=0.24.9"
 
 # Force Tauri 2 compatible RC versions
 specta = { version = "=2.0.0-rc.24", features = ["derive"] }

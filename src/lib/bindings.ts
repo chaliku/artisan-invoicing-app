@@ -15,7 +15,7 @@ export const commands = {
 	updatePart: (id: number, name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<null, InvoiceError>(__TAURI_INVOKE("update_part", { id, name, lowBound, highBound, imagePath })),
 	deletePart: (id: number) => typedError<null, InvoiceError>(__TAURI_INVOKE("delete_part", { id })),
 	savePartImage: (sourcePath: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_part_image", { sourcePath })),
-	generateInvoicePdf: (invoice: Invoice, invoiceType: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("generate_invoice_pdf", { invoice, invoiceType })),
+	generateInvoicePdf: (invoice: Invoice, invoiceType: string, date: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("generate_invoice_pdf", { invoice, invoiceType, date })),
 };
 
 /* Types */
