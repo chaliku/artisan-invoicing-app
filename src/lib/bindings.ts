@@ -10,6 +10,7 @@ export const commands = {
 	greet: (name: string) => __TAURI_INVOKE<string>("greet", { name }),
 	currentDateDmy: () => typedError<string, InvoiceError>(__TAURI_INVOKE("current_date_dmy")),
 	saveInvoice: (payload: InvoicePayload, date: string) => typedError<number, InvoiceError>(__TAURI_INVOKE("save_invoice", { payload, date })),
+	saveAndGeneratePdf: (payload: InvoicePayload, date: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_and_generate_pdf", { payload, date })),
 	addPart: (name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<number, InvoiceError>(__TAURI_INVOKE("add_part", { name, lowBound, highBound, imagePath })),
 	getParts: () => typedError<Part[], InvoiceError>(__TAURI_INVOKE("get_parts")),
 	updatePart: (id: number, name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<null, InvoiceError>(__TAURI_INVOKE("update_part", { id, name, lowBound, highBound, imagePath })),

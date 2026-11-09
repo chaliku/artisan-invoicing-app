@@ -13,6 +13,13 @@
     );
   }
 
+  // دالة التحقق: تمنع الحروف العربية وتسمح باللاتينية والفرنسية (مع التشكيل)
+  function isValidLatin(text: string): boolean {
+    // نطاق الحروف العربية في Unicode هو \u0600-\u06FF
+    const arabicRegex = /[\u0600-\u06FF]/;
+    return !arabicRegex.test(text);
+  }
+
   let clientName = $state("");
   let items = $state([
     { name: "", price: 0, receipt_image_path: null, note: "" },
@@ -87,6 +94,12 @@
       return;
     }
 
+    // تطبيق قاعدة منع العربية
+    if (!isValidLatin(clientName)) {
+      error = "اسم العميل يجب أن يكون بالأحرف اللاتينية فقط (مثل: Ahmed). يرجى تصحيح الاسم.";
+      return;
+    }
+
     const validItems = items.filter((item) => item.name.trim());
     if (validItems.length === 0) {
       error = "الرجاء إضافة قطعة واحدة على الأقل";
@@ -98,7 +111,8 @@
     success = "";
 
     try {
-      const result = await commands.saveInvoice(
+      // نستدعي الأمر الجديد الذي يحفظ ويولد الـ PDF
+      const result = await commands.saveAndGeneratePdf(
         {
           client_name: clientName.trim(),
           items: validItems,
@@ -109,19 +123,19 @@
       );
 
       if (result.status === "ok") {
-        success = "تم حفظ الفاتورة بنجاح";
+        success = "✅ تم حفظ الفاتورة وإنشاء PDF بنجاح! المسار: " + result.data;
         setTimeout(() => {
           clientName = "";
           items = [{ name: "", price: 0, receipt_image_path: null, note: "" }];
           laborFee = 0;
           transportFee = 0;
           success = "";
-        }, 3000);
+        }, 5000);
       } else {
         error = mapError(result.error);
       }
     } catch (e) {
-      error = "خطأ في الاتصال";
+      error = "خطأ في الاتصال: " + String(e);
     } finally {
       isSaving = false;
     }
@@ -132,6 +146,7 @@
     if (errStr.includes("InvalidTotal")) return "مبلغ الفاتورة غير صالح";
     if (errStr.includes("DatabaseError")) return "خطأ في قاعدة البيانات";
     if (errStr.includes("IoError")) return "خطأ في النظام";
+    if (errStr.includes("PdfGenerationFailed")) return "فشل إنشاء ملف PDF";
     return "حدث خطأ غير متوقع";
   }
 
@@ -147,32 +162,6 @@
     <h1>إنشاء فاتورة جديدة</h1>
     <button class="manage-parts-btn" onclick={() => goto("/parts")}>إدارة القطع</button>
   </div>
-
-  <!-- زر الاختبار المؤقت -->
-  <button
-    class="test-pdf-btn"
-    onclick={async () => {
-      try {
-        const dummyInvoice = {
-          client_name: "Ahmed",
-          items: [{ name: "Robinet", price: 500.0, receipt_image_path: null, note: null }],
-          labor_fee: 1500.0,
-          transport_fee: 200.0,
-          total: 2200.0
-        };
-        const res = await commands.generateInvoicePdf(dummyInvoice, "Facture", "07/11/2026");
-        if (res.status === "ok") {
-          alert("نجاح! الملف في: " + res.data);
-        } else {
-          alert("خطأ: " + JSON.stringify(res.error));
-        }
-      } catch (e) {
-        alert("خطأ في الاتصال: " + String(e));
-      }
-    }}
-  >
-    اختبار التصميم الاحترافي (PDF)
-  </button>
 
   <div class="date-display">التاريخ: {date}</div>
 
@@ -195,7 +184,7 @@
         style="text-align: left;"
       />
       <small style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;">
-        يرجى كتابة الاسم بالأحرف اللاتينية لكي يظهر بشكل صحيح في الفاتورة المطبوعة.
+        يرجى كتابة الاسم بالأحرف اللاتينية. (لن يتم قبول الحروف العربية).
       </small>
     </div>
   </div>
@@ -226,7 +215,7 @@
             {/each}
           </select>
           <small style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;">
-            تذكر: الفاتورة تطبع باللاتينية. استخدم صورة القطعة لكتابة الاسم العربي إن لزم.
+            تذكر: الفاتورة تطبع باللاتينية.
           </small>
         </div>
 
@@ -277,7 +266,7 @@
   </div>
 
   <button class="save-btn" onclick={saveInvoice} disabled={isSaving}>
-    {isSaving ? "⏳ جاري الحفظ..." : "حفظ الفاتورة"}
+    {isSaving ? "⏳ جاري الحفظ والتوليد..." : "حفظ وإصدار الفاتورة"}
   </button>
 </div>
 
@@ -305,8 +294,7 @@
   h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.5px; }
   h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.75rem; }
 
-  /* الأزرار */
-  .manage-parts-btn, .save-btn, .test-pdf-btn {
+  .manage-parts-btn, .save-btn {
     background: #f14345;
     color: white;
     border: 2px solid #6f3c39;
@@ -319,22 +307,11 @@
     transition: all 0.1s ease;
   }
 
-  /* زر الاختبار: أصغر وأقل بروزاً */
-  .test-pdf-btn {
-    width: 100%;
-    background: #6f3c39;
-    color: #FDFCF8;
-    margin-bottom: 1.25rem;
-    padding: 0.7rem;
-    font-size: 0.95rem;
-  }
-
-  .manage-parts-btn:active, .save-btn:active, .test-pdf-btn:active {
+  .manage-parts-btn:active, .save-btn:active {
     transform: translate(4px, 4px);
     box-shadow: 0px 0px 0px 0px #6f3c39;
   }
 
-  /* زر الحفظ: أصبح بعرض كامل ليتوازن مع الزر العلوي */
   .save-btn {
     width: 100%;
     padding: 0.85rem;
@@ -348,7 +325,6 @@
     box-shadow: 4px 4px 0px 0px #6f3c39;
   }
 
-  /* الحقول */
   input, select {
     width: 100%;
     padding: 0.7rem;
@@ -375,7 +351,6 @@
     font-weight: 600;
   }
 
-  /* الحاويات */
   .date-display {
     background: #FDFCF8;
     padding: 0.6rem 0.75rem;
@@ -468,7 +443,6 @@
     transform: translate(2px, 2px);
   }
 
-  /* صندوق المجموع: أصغر وأكثر توازناً */
   .total-display {
     background: #6f3c39;
     color: white;
