@@ -162,7 +162,6 @@
     <h1>إنشاء فاتورة جديدة</h1>
     <button class="manage-parts-btn" onclick={() => goto("/parts")}>إدارة القطع</button>
   </div>
-
   <div class="date-display">التاريخ: {date}</div>
 
   {#if error}

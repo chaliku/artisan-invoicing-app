@@ -18,3 +18,8 @@ gen/android/
 .DS_Store
 .vscode/
 .idea/
+
+# App Data (Do not commit user data)
+plumber.db
+signature.png
+qr_code.png
