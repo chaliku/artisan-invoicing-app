@@ -11,6 +11,10 @@ export const commands = {
 	currentDateDmy: () => typedError<string, InvoiceError>(__TAURI_INVOKE("current_date_dmy")),
 	saveInvoice: (payload: InvoicePayload, date: string) => typedError<number, InvoiceError>(__TAURI_INVOKE("save_invoice", { payload, date })),
 	saveAndGeneratePdf: (payload: InvoicePayload, date: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_and_generate_pdf", { payload, date })),
+	getSetting: (key: string) => typedError<string | null, InvoiceError>(__TAURI_INVOKE("get_setting", { key })),
+	setSetting: (key: string, value: string) => typedError<null, InvoiceError>(__TAURI_INVOKE("set_setting", { key, value })),
+	saveSignature: (sourcePath: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_signature", { sourcePath })),
+	getSignaturePath: () => typedError<string | null, InvoiceError>(__TAURI_INVOKE("get_signature_path")),
 	addPart: (name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<number, InvoiceError>(__TAURI_INVOKE("add_part", { name, lowBound, highBound, imagePath })),
 	getParts: () => typedError<Part[], InvoiceError>(__TAURI_INVOKE("get_parts")),
 	updatePart: (id: number, name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<null, InvoiceError>(__TAURI_INVOKE("update_part", { id, name, lowBound, highBound, imagePath })),
@@ -28,7 +32,7 @@ export type Invoice = {
 	total: number,
 };
 
-export type InvoiceError = "MissingJustification" | "InvalidTotal" | ({ PdfGenerationFailed: string }) & { DatabaseError?: never; IoError?: never; ShareFailed?: never } | ({ ShareFailed: string }) & { DatabaseError?: never; IoError?: never; PdfGenerationFailed?: never } | ({ IoError: string }) & { DatabaseError?: never; PdfGenerationFailed?: never; ShareFailed?: never } | ({ DatabaseError: string }) & { IoError?: never; PdfGenerationFailed?: never; ShareFailed?: never };
+export type InvoiceError = "MissingJustification" | "InvalidTotal" | ({ PdfGenerationFailed: string }) & { DatabaseError?: never; IoError?: never; ShareFailed?: never } | ({ ShareFailed: string }) & { DatabaseError?: never; IoError?: never; PdfGenerationFailed?: never } | ({ IoError: string }) & { DatabaseError?: never; PdfGenerationFailed?: never; ShareFailed?: never } | ({ DatabaseError: string }) & { IoError?: never; PdfGenerationFailed?: never; ShareFailed?: never } | "InvalidClientName";
 
 export type InvoiceItem = {
 	name: string,

@@ -1,5 +1,5 @@
 use printpdf::*;
-use printpdf::path::{PaintMode, WindingOrder}; // Correct import path
+use printpdf::path::{PaintMode, WindingOrder};
 use tauri::{AppHandle, Manager};
 use crate::errors::InvoiceError;
 use crate::models::Invoice;
@@ -21,7 +21,6 @@ fn format_price(price: f64) -> String {
     format!("{}.{:02} DZD", formatted, frac)
 }
 
-// Draw rectangle using add_polygon
 fn draw_rect(layer: &PdfLayerReference, x1: f32, y1: f32, x2: f32, y2: f32, color: Color) {
     layer.set_fill_color(color);
     let points = vec![
@@ -43,17 +42,26 @@ pub fn draw_invoice_layout(
     font: &IndirectFontRef,
     invoice: &Invoice,
     date: &str,
+    plumber_name: &str,
+    plumber_phone: &str,
+    plumber_address: &str,
+    signature_path: Option<String>,
+    developer_qr_bytes: Option<Vec<u8>>,
 ) -> Result<(), InvoiceError> {
     let red = Color::Rgb(Rgb::new(0.94, 0.26, 0.27, None));
     let black = Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None));
     let white = Color::Rgb(Rgb::new(1.0, 1.0, 1.0, None));
     let dark_red = Color::Rgb(Rgb::new(0.43, 0.23, 0.22, None));
+    let dark_grey = Color::Rgb(Rgb::new(0.1, 0.1, 0.1, None));
 
-    // 1. Header
+    // 1. Header (Plumber Info)
     layer.set_fill_color(red.clone());
     layer.use_text("FACTURE", 24.0, Mm(150.0), Mm(270.0), font);
+
     layer.set_fill_color(black.clone());
-    layer.use_text("Plombier", 16.0, Mm(20.0), Mm(270.0), font);
+    layer.use_text(plumber_name, 16.0, Mm(20.0), Mm(270.0), font);
+    layer.use_text(plumber_phone, 10.0, Mm(20.0), Mm(262.0), font);
+    layer.use_text(plumber_address, 10.0, Mm(20.0), Mm(256.0), font);
 
     // 2. Client Info
     layer.use_text(&format!("Facturé à: {}", invoice.client_name), 12.0, Mm(20.0), Mm(240.0), font);
@@ -65,55 +73,101 @@ pub fn draw_invoice_layout(
     layer.use_text("Description", 12.0, Mm(25.0), Mm(202.0), font);
     layer.use_text("Prix", 12.0, Mm(160.0), Mm(202.0), font);
 
-    // 4. Items Loop with Images
+    // 4. Items Loop (Text only, as per recent decision)
     let mut current_y: f32 = 195.0;
     for item in &invoice.items {
         if current_y < 80.0 { break; }
-
-        let mut text_x_position: f32 = 25.0;
-
-        if let Some(path) = &item.receipt_image_path {
-            if let Ok(bytes) = std::fs::read(path) {
-                if let Ok(dynamic_image) = ::image::load_from_memory(&bytes) {
-                    use ::image::GenericImageView;
-                    let (_, height_px) = dynamic_image.dimensions();
-                    let height_mm = (height_px as f32 / 300.0) * 25.4;
-
-                    if height_mm > 0.0 {
-                        let scale_factor = 10.0 / height_mm;
-                        let pdf_image = Image::from_dynamic_image(&dynamic_image);
-
-                        let transform = ImageTransform {
-                            translate_x: Some(Mm(20.0)),
-                            translate_y: Some(Mm(current_y - 5.0)),
-                            scale_x: Some(scale_factor),
-                            scale_y: Some(scale_factor),
-                            rotate: None,
-                            dpi: None,
-                        };
-
-                        pdf_image.add_to_layer(layer.clone(), transform);
-                        text_x_position = 35.0;
-                    }
-                }
-            }
-        }
-
         layer.set_fill_color(black.clone());
-        layer.use_text(&item.name, 12.0, Mm(text_x_position), Mm(current_y), font);
+        layer.use_text(&item.name, 12.0, Mm(25.0), Mm(current_y), font);
         layer.use_text(&format_price(item.price), 12.0, Mm(160.0), Mm(current_y), font);
         current_y -= 10.0;
     }
 
-    // 5. Totals Box
-    let total_y = current_y - 10.0;
-    draw_rect(layer, 120.0, total_y, 190.0, total_y + 15.0, dark_red.clone());
-    layer.set_fill_color(white.clone());
-    layer.use_text(&format!("TOTAL: {}", format_price(invoice.total)), 12.0, Mm(125.0), Mm(total_y + 5.0), font);
+    // 5. Totals Breakdown (Task 1)
+    let items_total = invoice.total - invoice.labor_fee - invoice.transport_fee;
+    let mut total_y = current_y - 10.0;
 
-    // 6. Footer
     layer.set_fill_color(black.clone());
-    layer.use_text("Développé par Yassu", 10.0, Mm(20.0), Mm(20.0), font);
+    layer.use_text("Sous-total:", 10.0, Mm(100.0), Mm(total_y), font);
+    layer.use_text(&format_price(items_total), 10.0, Mm(160.0), Mm(total_y), font);
+
+    total_y -= 8.0;
+    layer.use_text("Main d'œuvre:", 10.0, Mm(100.0), Mm(total_y), font);
+    layer.use_text(&format_price(invoice.labor_fee), 10.0, Mm(160.0), Mm(total_y), font);
+
+    total_y -= 8.0;
+    layer.use_text("Transport:", 10.0, Mm(100.0), Mm(total_y), font);
+    layer.use_text(&format_price(invoice.transport_fee), 10.0, Mm(160.0), Mm(total_y), font);
+
+    total_y -= 12.0;
+    draw_rect(layer, 120.0, total_y - 15.0, 190.0, total_y, dark_red.clone());
+    layer.set_fill_color(white.clone());
+    layer.use_text("TOTAL:", 12.0, Mm(125.0), Mm(total_y - 10.0), font);
+    layer.use_text(&format_price(invoice.total), 12.0, Mm(155.0), Mm(total_y - 10.0), font);
+
+    // 6. Signature Image (at y=55)
+    if let Some(path) = signature_path {
+        if let Ok(bytes) = std::fs::read(&path) {
+            if let Ok(dynamic_image) = ::image::load_from_memory(&bytes) {
+                use ::image::GenericImageView;
+                let (_, height_px) = dynamic_image.dimensions();
+                let height_mm = (height_px as f32 / 300.0) * 25.4;
+                if height_mm > 0.0 {
+                    let max_height_mm = 30.0;
+                    let scale_factor = if height_mm > max_height_mm { max_height_mm / height_mm } else { 1.0 };
+                    let pdf_image = Image::from_dynamic_image(&dynamic_image);
+                    let transform = ImageTransform {
+                        translate_x: Some(Mm(20.0)),
+                        translate_y: Some(Mm(55.0)),
+                        scale_x: Some(scale_factor),
+                        scale_y: Some(scale_factor),
+                        rotate: None,
+                        dpi: None,
+                    };
+                    pdf_image.add_to_layer(layer.clone(), transform);
+                }
+            }
+        }
+    } else {
+        layer.set_fill_color(black.clone());
+        layer.use_text("Signature", 12.0, Mm(20.0), Mm(55.0), font);
+    }
+
+    // 7. Dark Footer Bar & QR Code (Task 3)
+    // Draw a dark grey rectangle from y=0 to y=25
+    draw_rect(layer, 0.0, 0.0, 210.0, 25.0, dark_grey);
+
+    layer.set_fill_color(white.clone());
+    // Left Side: Developer Branding
+    layer.use_text("Développé par Yassu", 10.0, Mm(20.0), Mm(15.0), font);
+    layer.use_text("Merci de votre confiance", 8.0, Mm(20.0), Mm(7.0), font);
+
+    // Center: Contact Email
+    layer.use_text("Contact: An-Yassu-kei@proton.me", 8.0, Mm(85.0), Mm(11.0), font);
+
+    // Right Side: QR Code
+    if let Some(bytes) = developer_qr_bytes {
+        if let Ok(dynamic_image) = ::image::load_from_memory(&bytes) {
+            use ::image::GenericImageView;
+            let (_, height_px) = dynamic_image.dimensions();
+            let height_mm = (height_px as f32 / 300.0) * 25.4;
+            if height_mm > 0.0 {
+                // Scale QR to max 18mm height
+                let max_height_mm = 18.0;
+                let scale_factor = if height_mm > max_height_mm { max_height_mm / height_mm } else { 1.0 };
+                let pdf_image = Image::from_dynamic_image(&dynamic_image);
+                let transform = ImageTransform {
+                    translate_x: Some(Mm(170.0)),
+                    translate_y: Some(Mm(3.5)),
+                    scale_x: Some(scale_factor),
+                    scale_y: Some(scale_factor),
+                    rotate: None,
+                    dpi: None,
+                };
+                pdf_image.add_to_layer(layer.clone(), transform);
+            }
+        }
+    }
 
     Ok(())
 }
@@ -126,35 +180,55 @@ pub fn generate_invoice_pdf(
     _invoice_type: String,
     date: String,
 ) -> Result<String, InvoiceError> {
-    let (doc, page1, layer1) = PdfDocument::new("Invoice", Mm(210.0), Mm(297.0), "Layer 1");
-    let current_layer = doc.get_page(page1).get_layer(layer1);
-
-    let font = doc
-    .add_builtin_font(BuiltinFont::Helvetica)
-    .map_err(|e| InvoiceError::PdfGenerationFailed(format!("Font error: {}", e)))?;
-
-    draw_invoice_layout(&doc, &current_layer, &font, &invoice, &date)?;
-
     let app_data_dir = app_handle
     .path()
     .app_data_dir()
     .map_err(|_| InvoiceError::PdfGenerationFailed("Path resolution error".into()))?;
+
+    // Fetch plumber info
+    let plumber_name = crate::db::get_setting("plumber_name".to_string())?
+    .unwrap_or_else(|| "Plomberie".to_string());
+    let plumber_phone = crate::db::get_setting("plumber_phone".to_string())?
+    .unwrap_or_else(|| "".to_string());
+    let plumber_address = crate::db::get_setting("plumber_address".to_string())?
+    .unwrap_or_else(|| "".to_string());
+    let signature_path = crate::db::get_setting("signature_path".to_string())?
+    .map(|p| app_data_dir.join(p).to_string_lossy().to_string());
+
+    // Read QR image
+    let developer_qr_bytes = std::fs::read("qr_code.png").ok();
+
+    let (doc, page1, layer1) = PdfDocument::new("Invoice", Mm(210.0), Mm(297.0), "Layer 1");
+    let current_layer = doc.get_page(page1).get_layer(layer1);
+    let font = doc
+    .add_builtin_font(BuiltinFont::Helvetica)
+    .map_err(|e| InvoiceError::PdfGenerationFailed(format!("Font error: {}", e)))?;
+
+    draw_invoice_layout(
+        &doc,
+        &current_layer,
+        &font,
+        &invoice,
+        &date,
+        &plumber_name,
+        &plumber_phone,
+        &plumber_address,
+        signature_path,
+        developer_qr_bytes,
+    )?;
+
     let invoices_dir = app_data_dir.join("invoices");
     fs::create_dir_all(&invoices_dir)
     .map_err(|_| InvoiceError::PdfGenerationFailed("Directory creation error".into()))?;
-
     let timestamp = SystemTime::now()
     .duration_since(UNIX_EPOCH)
     .map_err(|_| InvoiceError::PdfGenerationFailed("System time error".into()))?
     .as_secs();
     let file_path = invoices_dir.join(format!("invoice_{}.pdf", timestamp));
-
     let file = fs::File::create(&file_path)
     .map_err(|_| InvoiceError::PdfGenerationFailed("File creation error".into()))?;
     let mut writer = std::io::BufWriter::new(file);
-
     doc.save(&mut writer)
     .map_err(|_| InvoiceError::PdfGenerationFailed("PDF save error".into()))?;
-
     Ok(file_path.to_string_lossy().to_string())
 }

@@ -48,7 +48,11 @@ pub fn run() {
         greet,
         current_date_dmy,
         db::save_invoice,
-        db::save_and_generate_pdf, // <-- السطر الجديد
+        db::save_and_generate_pdf,
+        db::get_setting,
+        db::set_setting,
+        db::save_signature,
+        db::get_signature_path,
         db::parts::add_part,
         db::parts::get_parts,
         db::parts::update_part,
@@ -59,7 +63,7 @@ pub fn run() {
 
     let result = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_dialog::init()) // إضافة إضافة الـ Dialog
+    .plugin(tauri_plugin_dialog::init())
     .invoke_handler(specta_builder.invoke_handler())
     .setup(move |app| {
         db::initialize_db(app.handle())?;

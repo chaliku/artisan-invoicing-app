@@ -21,4 +21,7 @@ pub enum InvoiceError {
 
     #[error("Database error: {0}")]
     DatabaseError(String),
+
+    #[error("Client name contains Arabic characters. Only Latin script is allowed.")]
+    InvalidClientName,
 }

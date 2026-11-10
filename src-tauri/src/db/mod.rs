@@ -9,6 +9,20 @@ pub mod parts;
 
 static DB: Mutex<Option<rusqlite::Connection>> = Mutex::new(None);
 
+// ─────────────────────────────────────────────
+// Client Name Validation (Phase 6.5b)
+// ─────────────────────────────────────────────
+pub fn validate_client_name(name: &str) -> Result<(), InvoiceError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(InvoiceError::InvalidClientName);
+    }
+    if trimmed.chars().any(|c| matches!(c, '\u{0600}'..='\u{06FF}')) {
+        return Err(InvoiceError::InvalidClientName);
+    }
+    Ok(())
+}
+
 pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> {
     let data_dir = app_handle
     .path()
@@ -79,6 +93,9 @@ fn insert_invoice_to_db(
     payload: &InvoicePayload,
     date: &str,
 ) -> Result<i64, InvoiceError> {
+    // Phase 6.5b: Validate client name BEFORE touching DB
+    validate_client_name(&payload.client_name)?;
+
     let mut db = DB
     .lock()
     .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
@@ -179,4 +196,103 @@ pub fn save_and_generate_pdf(
     )?;
 
     Ok(pdf_path)
+}
+
+// ─────────────────────────────────────────────
+// Settings Commands (Phase 6.5)
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_setting(key: String) -> Result<Option<String>, InvoiceError> {
+    let mut db = DB
+    .lock()
+    .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
+    let conn = db
+    .as_mut()
+    .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
+
+    let mut stmt = conn
+    .prepare("SELECT value FROM settings WHERE key = ?1")
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to prepare statement: {e}")))?;
+
+    let mut rows = stmt
+    .query(rusqlite::params![key])
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to query setting: {e}")))?;
+
+    if let Some(row) = rows
+        .next()
+        .map_err(|e| InvoiceError::DatabaseError(format!("Failed to fetch setting: {e}")))?
+        {
+            let value: String = row
+            .get(0)
+            .map_err(|e| InvoiceError::DatabaseError(format!("Failed to get setting value: {e}")))?;
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_setting(key: String, value: String) -> Result<(), InvoiceError> {
+    let mut db = DB
+    .lock()
+    .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
+    let conn = db
+    .as_mut()
+    .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
+
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                 rusqlite::params![key, value],
+    )
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to set setting: {e}")))?;
+
+    Ok(())
+}
+
+// ─────────────────────────────────────────────
+// Signature Commands (Phase 6.5)
+// ─────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+pub fn save_signature(
+    app_handle: tauri::AppHandle,
+    source_path: String,
+) -> Result<String, InvoiceError> {
+    let app_data_dir = app_handle
+    .path()
+    .app_data_dir()
+    .map_err(|e| InvoiceError::IoError(format!("Path resolution error: {e}")))?;
+
+    let dest_path = app_data_dir.join("signature.png");
+
+    if !std::path::Path::new(&source_path).exists() {
+        return Err(InvoiceError::IoError("Source file does not exist".into()));
+    }
+
+    std::fs::copy(&source_path, &dest_path)
+    .map_err(|e| InvoiceError::IoError(format!("Failed to copy signature image: {e}")))?;
+
+    set_setting("signature_path".to_string(), "signature.png".to_string())?;
+
+    Ok(dest_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_signature_path(app_handle: tauri::AppHandle) -> Result<Option<String>, InvoiceError> {
+    let path_opt = get_setting("signature_path".to_string())?;
+    if let Some(p) = path_opt {
+        let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| InvoiceError::IoError(format!("Path resolution error: {e}")))?;
+        let abs_path = app_data_dir.join(p).to_string_lossy().to_string();
+        Ok(Some(abs_path))
+    } else {
+        Ok(None)
+    }
 }

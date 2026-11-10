@@ -5,5 +5,8 @@
 	],
 	"/parts": [
 		"src/routes/+layout.ts"
+	],
+	"/settings": [
+		"src/routes/+layout.ts"
 	]
 }

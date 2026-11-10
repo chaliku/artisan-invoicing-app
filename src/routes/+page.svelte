@@ -13,9 +13,7 @@
     );
   }
 
-  // دالة التحقق: تمنع الحروف العربية وتسمح باللاتينية والفرنسية (مع التشكيل)
   function isValidLatin(text: string): boolean {
-    // نطاق الحروف العربية في Unicode هو \u0600-\u06FF
     const arabicRegex = /[\u0600-\u06FF]/;
     return !arabicRegex.test(text);
   }
@@ -94,9 +92,8 @@
       return;
     }
 
-    // تطبيق قاعدة منع العربية
     if (!isValidLatin(clientName)) {
-      error = "اسم العميل يجب أن يكون بالأحرف اللاتينية فقط (مثل: Ahmed). يرجى تصحيح الاسم.";
+      error = "اسم العميل يجب أن يكون بالأحرف اللاتينية فقط (مثل: Ahmed).";
       return;
     }
 
@@ -111,7 +108,6 @@
     success = "";
 
     try {
-      // نستدعي الأمر الجديد الذي يحفظ ويولد الـ PDF
       const result = await commands.saveAndGeneratePdf(
         {
           client_name: clientName.trim(),
@@ -143,6 +139,7 @@
 
   function mapError(err: any) {
     const errStr = JSON.stringify(err);
+    if (errStr.includes("InvalidClientName")) return "اسم العميل يحتوي على حروف عربية (غير مسموح).";
     if (errStr.includes("InvalidTotal")) return "مبلغ الفاتورة غير صالح";
     if (errStr.includes("DatabaseError")) return "خطأ في قاعدة البيانات";
     if (errStr.includes("IoError")) return "خطأ في النظام";
@@ -160,8 +157,12 @@
 <div class="container">
   <div class="header">
     <h1>إنشاء فاتورة جديدة</h1>
-    <button class="manage-parts-btn" onclick={() => goto("/parts")}>إدارة القطع</button>
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="manage-parts-btn" onclick={() => goto("/parts")}>إدارة القطع</button>
+      <button class="manage-parts-btn" style="background: #6f3c39;" onclick={() => goto("/settings")}>الإعدادات</button>
+    </div>
   </div>
+
   <div class="date-display">التاريخ: {date}</div>
 
   {#if error}
@@ -182,8 +183,8 @@
         dir="ltr"
         style="text-align: left;"
       />
-      <small style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;">
-        يرجى كتابة الاسم بالأحرف اللاتينية. (لن يتم قبول الحروف العربية).
+      <small style="color: #d16a6c; font-size: 0.75rem; margin-top: 2px; display: block;">
+        يرجى كتابة الاسم بالأحرف اللاتينية.
       </small>
     </div>
   </div>
@@ -213,9 +214,6 @@
               <option value={part.name}>{part.name}</option>
             {/each}
           </select>
-          <small style="color: #6c6d6c; font-size: 0.8rem; margin-top: 4px; display: block;">
-            تذكر: الفاتورة تطبع باللاتينية.
-          </small>
         </div>
 
         {#if item.name}
@@ -232,7 +230,7 @@
             <input
               type="text"
               bind:value={item.note}
-              placeholder="أضف ملاحظة إذا لزم الأمر"
+              placeholder="ملاحظة"
               dir="auto"
             />
           </div>
@@ -245,13 +243,11 @@
 
   <div class="form-section">
     <h2>الرسوم الإضافية</h2>
-
     <div class="form-row">
       <div class="form-group">
         <label>أجرة العمل (دج)</label>
         <input type="number" bind:value={laborFee} step="0.01" min="0" />
       </div>
-
       <div class="form-group">
         <label>أجرة النقل (دج)</label>
         <input type="number" bind:value={transportFee} step="0.01" min="0" />
@@ -270,197 +266,47 @@
 </div>
 
 <style>
-  .container {
-    max-width: 750px;
-    margin: 0 auto;
-    padding: 1.5rem;
-    direction: rtl;
-    color: #6c6d6c;
-  }
+  .container { max-width: 700px; margin: 0 auto; padding: 1rem; direction: rtl; color: #6c6d6c; }
 
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.25rem;
-  }
-
-  h1, h2 {
-    color: #6f3c39;
-    margin: 0;
-  }
-
-  h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.5px; }
-  h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  h1, h2 { color: #6f3c39; margin: 0; }
+  h1 { font-size: 1.6rem; font-weight: 800; }
+  h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
 
   .manage-parts-btn, .save-btn {
-    background: #f14345;
-    color: white;
-    border: 2px solid #6f3c39;
-    padding: 0.55rem 1.1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 700;
-    box-shadow: 4px 4px 0px 0px #6f3c39;
-    transition: all 0.1s ease;
+    background: #f14345; color: white; border: 2px solid #6f3c39; padding: 0.45rem 0.9rem;
+    border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 700;
+    box-shadow: 3px 3px 0px 0px #6f3c39; transition: all 0.1s ease;
   }
+  .manage-parts-btn:active, .save-btn:active { transform: translate(3px, 3px); box-shadow: 0px 0px 0px 0px #6f3c39; }
 
-  .manage-parts-btn:active, .save-btn:active {
-    transform: translate(4px, 4px);
-    box-shadow: 0px 0px 0px 0px #6f3c39;
-  }
-
-  .save-btn {
-    width: 100%;
-    padding: 0.85rem;
-    font-size: 1.1rem;
-  }
-
-  .save-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 4px 4px 0px 0px #6f3c39;
-  }
+  .save-btn { width: 100%; padding: 0.7rem; font-size: 1rem; margin-top: 0.5rem; }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0px 0px #6f3c39; }
 
   input, select {
-    width: 100%;
-    padding: 0.7rem;
-    border: 2px solid #6f3c39;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    background: #e3e3db !important;
-    box-sizing: border-box;
-    color: #6c6d6c;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    width: 100%; padding: 0.5rem; border: 2px solid #6f3c39; border-radius: 6px;
+    font-size: 0.85rem; background: #e3e3db !important; box-sizing: border-box;
+    color: #6c6d6c; font-weight: 500;
   }
+  input:focus, select:focus { outline: none; background: #ffffff !important; box-shadow: 3px 3px 0px 0px rgba(241, 67, 69, 0.3); }
 
-  input:focus, select:focus {
-    outline: none;
-    background: #ffffff !important;
-    box-shadow: 4px 4px 0px 0px rgba(241, 67, 69, 0.3);
-  }
+  .hint { color: #d16a6c; font-size: 0.75rem; margin-top: 2px; font-weight: 600; }
+  .date-display { background: #FDFCF8; padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-weight: 700; font-size: 0.85rem; border: 2px solid #6f3c39; box-shadow: 3px 3px 0px 0px #6f3c39; }
 
-  .hint {
-    color: #d16a6c;
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-    font-weight: 600;
-  }
-
-  .date-display {
-    background: #FDFCF8;
-    padding: 0.6rem 0.75rem;
-    border-radius: 6px;
-    margin-bottom: 1.25rem;
-    font-weight: 700;
-    font-size: 0.95rem;
-    border: 2px solid #6f3c39;
-    box-shadow: 4px 4px 0px 0px #6f3c39;
-  }
-
-  .error, .success {
-    padding: 0.85rem;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-    border: 2px solid;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
+  .error, .success { padding: 0.7rem; border-radius: 6px; margin-bottom: 1rem; border: 2px solid; font-weight: 600; font-size: 0.85rem; }
   .error { background: #fee; color: #c33; border-color: #c33; }
   .success { background: #efe; color: #363; border-color: #363; }
 
-  .form-section {
-    background: #FDFCF8;
-    padding: 1.25rem;
-    border-radius: 8px;
-    border: 2px solid #6f3c39;
-    box-shadow: 6px 6px 0px 0px #6f3c39;
-    margin-bottom: 1.25rem;
-  }
+  .form-section { background: #FDFCF8; padding: 1rem; border-radius: 8px; border: 2px solid #6f3c39; box-shadow: 4px 4px 0px 0px #6f3c39; margin-bottom: 1rem; }
+  .form-group { margin-bottom: 0.65rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+  label { display: block; margin-bottom: 0.3rem; font-weight: 700; font-size: 0.85rem; }
 
-  .form-group { margin-bottom: 0.85rem; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+  .item-card { border: 2px solid #6f3c39; border-radius: 6px; padding: 0.65rem; margin-bottom: 0.65rem; background: #ffffff; box-shadow: 2px 2px 0px 0px #6f3c39; }
+  .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; font-weight: 700; font-size: 0.85rem; }
+  .remove-btn { background: transparent; color: #f14345; border: 2px solid #f14345; padding: 0.15rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
+  .add-item-btn { width: 100%; background: #e3e3db; color: #6f3c39; border: 2px dashed #6f3c39; padding: 0.5rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 700; }
 
-  label {
-    display: block;
-    margin-bottom: 0.4rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-  }
-
-  .item-card {
-    border: 2px solid #6f3c39;
-    border-radius: 6px;
-    padding: 0.85rem;
-    margin-bottom: 0.85rem;
-    background: #ffffff;
-    box-shadow: 3px 3px 0px 0px #6f3c39;
-  }
-
-  .item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.85rem;
-    font-weight: 700;
-    font-size: 0.95rem;
-  }
-
-  .remove-btn {
-    background: transparent;
-    color: #f14345;
-    border: 2px solid #f14345;
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 700;
-    transition: all 0.1s;
-  }
-
-  .remove-btn:active {
-    transform: translate(2px, 2px);
-  }
-
-  .add-item-btn {
-    width: 100%;
-    background: #e3e3db;
-    color: #6f3c39;
-    border: 2px dashed #6f3c39;
-    padding: 0.65rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 700;
-    transition: all 0.1s;
-  }
-
-  .add-item-btn:active {
-    transform: translate(2px, 2px);
-  }
-
-  .total-display {
-    background: #6f3c39;
-    color: white;
-    padding: 1.1rem 1.25rem;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 1.25rem;
-    border: 2px solid #6f3c39;
-    box-shadow: 6px 6px 0px 0px #1a1a1a;
-  }
-
-  .total-amount {
-    font-size: 1.5rem;
-    color: #f14345;
-    font-weight: 800;
-    text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
-  }
+  .total-display { background: #6f3c39; color: white; padding: 0.9rem 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; font-weight: 700; margin-bottom: 1rem; border: 2px solid #6f3c39; box-shadow: 4px 4px 0px 0px #1a1a1a; }
+  .total-amount { font-size: 1.3rem; color: #f14345; font-weight: 800; }
 </style>
