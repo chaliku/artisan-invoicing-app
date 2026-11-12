@@ -6,9 +6,20 @@ use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 
-fn format_price(price: f64) -> String {
-    let whole = price as i64;
-    let frac = ((price - whole as f64) * 100.0).round() as i64;
+fn format_price(price: f64) -> Result<String, InvoiceError> {
+    // Decision #032 / Rule 22: negatives are invalid (no credit memo model
+    // in v1.0); NaN/Inf are never valid prices. Both return Err(InvalidTotal)
+    // rather than panic or produce "0.00 DZD" for garbage input.
+    if !price.is_finite() || price < 0.0 {
+        return Err(InvoiceError::InvalidTotal);
+    }
+    // Cents-first, half-up. Rounding before integer division avoids the
+    // E-05 fraction overflow: the old `(price - whole) * 100` path yielded
+    // frac==100 for 1234.999, formatting as "1,234.100 DZD" instead of
+    // "1,235.00 DZD".
+    let cents = (price * 100.0).round() as i64;
+    let whole = cents / 100;
+    let frac = cents % 100;
     let whole_str = whole.to_string();
     let mut formatted = String::new();
     for (i, c) in whole_str.chars().rev().enumerate() {
@@ -18,7 +29,7 @@ fn format_price(price: f64) -> String {
         formatted.push(c);
     }
     let formatted = formatted.chars().rev().collect::<String>();
-    format!("{}.{:02} DZD", formatted, frac)
+    Ok(format!("{}.{:02} DZD", formatted, frac))
 }
 
 fn draw_rect(layer: &PdfLayerReference, x1: f32, y1: f32, x2: f32, y2: f32, color: Color) {
@@ -90,7 +101,7 @@ pub fn draw_invoice_layout(
         layer.set_fill_color(black.clone());
         layer.use_text(&item.name, 12.0, Mm(25.0), Mm(current_y), font);
         layer.use_text(
-            format_price(item.price),
+            format_price(item.price)?,
             12.0,
             Mm(160.0),
             Mm(current_y),
@@ -106,7 +117,7 @@ pub fn draw_invoice_layout(
     layer.set_fill_color(black.clone());
     layer.use_text("Sous-total:", 10.0, Mm(100.0), Mm(total_y), font);
     layer.use_text(
-        format_price(items_total),
+        format_price(items_total)?,
         10.0,
         Mm(160.0),
         Mm(total_y),
@@ -116,7 +127,7 @@ pub fn draw_invoice_layout(
     total_y -= 8.0;
     layer.use_text("Main d'œuvre:", 10.0, Mm(100.0), Mm(total_y), font);
     layer.use_text(
-        format_price(invoice.labor_fee),
+        format_price(invoice.labor_fee)?,
         10.0,
         Mm(160.0),
         Mm(total_y),
@@ -126,7 +137,7 @@ pub fn draw_invoice_layout(
     total_y -= 8.0;
     layer.use_text("Transport:", 10.0, Mm(100.0), Mm(total_y), font);
     layer.use_text(
-        format_price(invoice.transport_fee),
+        format_price(invoice.transport_fee)?,
         10.0,
         Mm(160.0),
         Mm(total_y),
@@ -145,7 +156,7 @@ pub fn draw_invoice_layout(
     layer.set_fill_color(white.clone());
     layer.use_text("TOTAL:", 12.0, Mm(125.0), Mm(total_y - 10.0), font);
     layer.use_text(
-        format_price(invoice.total),
+        format_price(invoice.total)?,
         12.0,
         Mm(155.0),
         Mm(total_y - 10.0),
@@ -294,4 +305,53 @@ pub fn generate_invoice_pdf(
     doc.save(&mut writer)
         .map_err(|_| InvoiceError::PdfGenerationFailed("PDF save error".into()))?;
     Ok(file_path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_price_gate_4_values() {
+        // §10.2 GATE 4 — canonical money formatting cases.
+        assert_eq!(format_price(0.005).ok().as_deref(), Some("0.01 DZD"));
+        assert_eq!(format_price(0.001).ok().as_deref(), Some("0.00 DZD"));
+        assert_eq!(format_price(0.004).ok().as_deref(), Some("0.00 DZD"));
+        assert_eq!(format_price(0.999).ok().as_deref(), Some("1.00 DZD"));
+        assert_eq!(format_price(99.99).ok().as_deref(), Some("99.99 DZD"));
+        assert_eq!(format_price(1234.999).ok().as_deref(), Some("1,235.00 DZD"));
+        assert_eq!(
+            format_price(1234567.89).ok().as_deref(),
+            Some("1,234,567.89 DZD")
+        );
+        assert_eq!(format_price(0.00).ok().as_deref(), Some("0.00 DZD"));
+    }
+
+    #[test]
+    fn format_price_rejects_negatives() {
+        assert!(matches!(
+            format_price(-1.00),
+            Err(InvoiceError::InvalidTotal)
+        ));
+        assert!(matches!(
+            format_price(-0.01),
+            Err(InvoiceError::InvalidTotal)
+        ));
+    }
+
+    #[test]
+    fn format_price_rejects_non_finite() {
+        assert!(matches!(
+            format_price(f64::NAN),
+            Err(InvoiceError::InvalidTotal)
+        ));
+        assert!(matches!(
+            format_price(f64::INFINITY),
+            Err(InvoiceError::InvalidTotal)
+        ));
+        assert!(matches!(
+            format_price(f64::NEG_INFINITY),
+            Err(InvoiceError::InvalidTotal)
+        ));
+    }
 }
