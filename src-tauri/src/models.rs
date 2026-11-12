@@ -1,6 +1,6 @@
+use crate::errors::InvoiceError;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use crate::errors::InvoiceError;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -18,23 +18,12 @@ pub struct InvoiceItem {
     pub note: Option<String>,
 }
 
-// ─────────────────────────────────────────────
-// Phase 6.5c: Work Photos Models
-// ─────────────────────────────────────────────
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct WorkPhotoInput {
-    pub location_number: i32,
-    pub before_path: Option<String>,
-    pub after_path: Option<String>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct InvoicePayload {
     pub client_name: String,
     pub items: Vec<InvoiceItem>,
     pub labor_fee: f64,
     pub transport_fee: f64,
-    pub work_photos: Option<Vec<WorkPhotoInput>>, // <-- تمت الإضافة
 }
 
 #[allow(dead_code)]
@@ -45,6 +34,8 @@ pub struct Invoice {
     pub labor_fee: f64,
     pub transport_fee: f64,
     pub total: f64,
+    pub before_photo_path: Option<String>,
+    pub after_photo_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

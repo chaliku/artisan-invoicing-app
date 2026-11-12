@@ -15,7 +15,6 @@ export const commands = {
 	setSetting: (key: string, value: string) => typedError<null, InvoiceError>(__TAURI_INVOKE("set_setting", { key, value })),
 	saveSignature: (sourcePath: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_signature", { sourcePath })),
 	getSignaturePath: () => typedError<string | null, InvoiceError>(__TAURI_INVOKE("get_signature_path")),
-	saveWorkPhoto: (sourcePath: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_work_photo", { sourcePath })),
 	addPart: (name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<number, InvoiceError>(__TAURI_INVOKE("add_part", { name, lowBound, highBound, imagePath })),
 	getParts: () => typedError<Part[], InvoiceError>(__TAURI_INVOKE("get_parts")),
 	updatePart: (id: number, name: string, lowBound: number | null, highBound: number | null, imagePath: string | null) => typedError<null, InvoiceError>(__TAURI_INVOKE("update_part", { id, name, lowBound, highBound, imagePath })),
@@ -31,6 +30,8 @@ export type Invoice = {
 	labor_fee: number,
 	transport_fee: number,
 	total: number,
+	before_photo_path: string | null,
+	after_photo_path: string | null,
 };
 
 export type InvoiceError = "MissingJustification" | "InvalidTotal" | ({ PdfGenerationFailed: string }) & { DatabaseError?: never; EmptyField?: never; InvalidLatinText?: never; IoError?: never; ShareFailed?: never } | ({ ShareFailed: string }) & { DatabaseError?: never; EmptyField?: never; InvalidLatinText?: never; IoError?: never; PdfGenerationFailed?: never } | ({ IoError: string }) & { DatabaseError?: never; EmptyField?: never; InvalidLatinText?: never; PdfGenerationFailed?: never; ShareFailed?: never } | ({ DatabaseError: string }) & { EmptyField?: never; InvalidLatinText?: never; IoError?: never; PdfGenerationFailed?: never; ShareFailed?: never } | "InvalidClientName" | ({ EmptyField: string }) & { DatabaseError?: never; InvalidLatinText?: never; IoError?: never; PdfGenerationFailed?: never; ShareFailed?: never } | ({ InvalidLatinText: string }) & { DatabaseError?: never; EmptyField?: never; IoError?: never; PdfGenerationFailed?: never; ShareFailed?: never };
@@ -47,7 +48,6 @@ export type InvoicePayload = {
 	items: InvoiceItem[],
 	labor_fee: number,
 	transport_fee: number,
-	work_photos: WorkPhotoInput[] | null,
 };
 
 export type Part = {
@@ -56,12 +56,6 @@ export type Part = {
 	low_bound: number | null,
 	high_bound: number | null,
 	image_path: string | null,
-};
-
-export type WorkPhotoInput = {
-	location_number: number,
-	before_path: string | null,
-	after_path: string | null,
 };
 
 /* Tauri Specta runtime */
