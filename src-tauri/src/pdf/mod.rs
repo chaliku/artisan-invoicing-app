@@ -256,8 +256,10 @@ pub fn generate_invoice_pdf(
     let signature_path = crate::db::get_setting("signature_path".to_string())?
         .map(|p| app_data_dir.join(p).to_string_lossy().to_string());
 
-    // Read QR image
-    let developer_qr_bytes = std::fs::read("qr_code.png").ok();
+    // E-03 (Commit 3): bundle QR at compile time. Missing file = compile error,
+    // not a silent `.ok()` failure. Path from src-tauri/src/pdf/mod.rs →
+    // ../../assets/qr_code.png = src-tauri/assets/qr_code.png.
+    let developer_qr_bytes = Some(include_bytes!("../../assets/qr_code.png").to_vec());
 
     let (doc, page1, layer1) = PdfDocument::new("Invoice", Mm(210.0), Mm(297.0), "Layer 1");
     let current_layer = doc.get_page(page1).get_layer(layer1);

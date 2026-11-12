@@ -22,7 +22,7 @@ gen/android/
 # App Data (Do not commit user data)
 plumber.db
 signature.png
-qr_code.png
+/qr_code.png
 
 # Local test artifacts (keep on disk, do not commit)
 latest_invoice.pdf
