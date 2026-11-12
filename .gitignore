@@ -29,3 +29,4 @@ latest_invoice.pdf
 test_invoice.pdf
 *.pdf
 /.svelte-kit/
+.github-token.txt
