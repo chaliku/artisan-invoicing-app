@@ -1,7 +1,6 @@
 use rusqlite::params;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
-
 use crate::errors::InvoiceError;
 use crate::models::{calculate_total, Invoice, InvoicePayload};
 
@@ -10,15 +9,11 @@ pub mod parts;
 static DB: Mutex<Option<rusqlite::Connection>> = Mutex::new(None);
 
 // ─────────────────────────────────────────────
-// Client Name Validation (Phase 6.5b)
+// Centralized Latin Validation
 // ─────────────────────────────────────────────
-pub fn validate_client_name(name: &str) -> Result<(), InvoiceError> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return Err(InvoiceError::InvalidClientName);
-    }
-    if trimmed.chars().any(|c| matches!(c, '\u{0600}'..='\u{06FF}')) {
-        return Err(InvoiceError::InvalidClientName);
+pub fn validate_latin(text: &str, field_name: &str) -> Result<(), InvoiceError> {
+    if text.chars().any(|c| matches!(c, '\u{0600}'..='\u{06FF}')) {
+        return Err(InvoiceError::InvalidLatinText(field_name.to_string()));
     }
     Ok(())
 }
@@ -28,10 +23,8 @@ pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> 
     .path()
     .app_data_dir()
     .map_err(|e| InvoiceError::IoError(e.to_string()))?;
-
     std::fs::create_dir_all(&data_dir)
     .map_err(|e| InvoiceError::IoError(format!("Failed to create data dir: {e}")))?;
-
     let db_path = data_dir.join("plumber.db");
     let conn = rusqlite::Connection::open(&db_path)
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to open DB: {e}")))?;
@@ -72,13 +65,19 @@ pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> 
         key TEXT PRIMARY KEY,
         value TEXT
     );
+    CREATE TABLE IF NOT EXISTS work_photos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        location_number INTEGER NOT NULL,
+        before_path TEXT,
+        after_path TEXT,
+        FOREIGN KEY(invoice_id) REFERENCES invoices(id)
+    );
     ",
     )
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to create tables: {e}")))?;
 
-    // ترقية آمنة: إضافة العمود إذا كان الجدول موجوداً مسبقاً
     let _ = conn.execute("ALTER TABLE parts ADD COLUMN image_path TEXT;", []);
-
     let mut db = DB
     .lock()
     .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
@@ -86,15 +85,26 @@ pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> 
     Ok(())
 }
 
-// ─────────────────────────────────────────────
-// Private Helper: Extract logic from save_invoice
-// ─────────────────────────────────────────────
 fn insert_invoice_to_db(
     payload: &InvoicePayload,
     date: &str,
 ) -> Result<i64, InvoiceError> {
-    // Phase 6.5b: Validate client name BEFORE touching DB
-    validate_client_name(&payload.client_name)?;
+    if payload.client_name.trim().is_empty() {
+        return Err(InvoiceError::InvalidClientName);
+    }
+    validate_latin(&payload.client_name, "client_name")?;
+
+    for item in &payload.items {
+        if item.name.trim().is_empty() {
+            return Err(InvoiceError::EmptyField("item_name".to_string()));
+        }
+        validate_latin(&item.name, "item_name")?;
+        if let Some(note) = &item.note {
+            if !note.trim().is_empty() {
+                validate_latin(note, "item_note")?;
+            }
+        }
+    }
 
     let mut db = DB
     .lock()
@@ -102,9 +112,7 @@ fn insert_invoice_to_db(
     let conn = db
     .as_mut()
     .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
-
     let total = calculate_total(&payload.items, payload.labor_fee, payload.transport_fee)?;
-
     let tx = conn
     .transaction()
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to start transaction: {e}")))?;
@@ -148,24 +156,28 @@ fn insert_invoice_to_db(
         .map_err(|e| InvoiceError::DatabaseError(format!("Failed to insert item: {e}")))?;
     }
 
+    // Insert work photos (if any)
+    if let Some(photos) = &payload.work_photos {
+        for photo in photos {
+            tx.execute(
+                "INSERT INTO work_photos (invoice_id, location_number, before_path, after_path) VALUES (?1, ?2, ?3, ?4)",
+                       params![invoice_id, photo.location_number, photo.before_path, photo.after_path],
+            )
+            .map_err(|e| InvoiceError::DatabaseError(format!("Failed to insert work photo: {e}")))?;
+        }
+    }
+
     tx.commit()
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to commit transaction: {e}")))?;
-
     Ok(invoice_id)
 }
 
-// ─────────────────────────────────────────────
-// Existing command: Save Only
-// ─────────────────────────────────────────────
 #[tauri::command]
 #[specta::specta]
 pub fn save_invoice(payload: InvoicePayload, date: String) -> Result<i64, InvoiceError> {
     insert_invoice_to_db(&payload, &date)
 }
 
-// ─────────────────────────────────────────────
-// New command: Save + Generate PDF
-// ─────────────────────────────────────────────
 #[tauri::command]
 #[specta::specta]
 pub fn save_and_generate_pdf(
@@ -173,10 +185,7 @@ pub fn save_and_generate_pdf(
     payload: InvoicePayload,
     date: String,
 ) -> Result<String, InvoiceError> {
-    // Step 1: Save to DB (The Mutex lock is released automatically when this function returns)
     let _invoice_id = insert_invoice_to_db(&payload, &date)?;
-
-    // Step 2: Build the Invoice struct for the PDF generator
     let total = calculate_total(&payload.items, payload.labor_fee, payload.transport_fee)?;
 
     let invoice = Invoice {
@@ -187,21 +196,18 @@ pub fn save_and_generate_pdf(
         total,
     };
 
-    // Step 3: Generate the PDF (This operation is slow, but the DB lock is already freed)
     let pdf_path = crate::pdf::generate_invoice_pdf(
         app_handle,
         invoice,
         "Facture".to_string(),
                                                     date,
     )?;
-
     Ok(pdf_path)
 }
 
 // ─────────────────────────────────────────────
-// Settings Commands (Phase 6.5)
+// Settings Commands (RESTORED)
 // ─────────────────────────────────────────────
-
 #[tauri::command]
 #[specta::specta]
 pub fn get_setting(key: String) -> Result<Option<String>, InvoiceError> {
@@ -211,15 +217,12 @@ pub fn get_setting(key: String) -> Result<Option<String>, InvoiceError> {
     let conn = db
     .as_mut()
     .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
-
     let mut stmt = conn
     .prepare("SELECT value FROM settings WHERE key = ?1")
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to prepare statement: {e}")))?;
-
     let mut rows = stmt
     .query(rusqlite::params![key])
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to query setting: {e}")))?;
-
     if let Some(row) = rows
         .next()
         .map_err(|e| InvoiceError::DatabaseError(format!("Failed to fetch setting: {e}")))?
@@ -236,26 +239,26 @@ pub fn get_setting(key: String) -> Result<Option<String>, InvoiceError> {
 #[tauri::command]
 #[specta::specta]
 pub fn set_setting(key: String, value: String) -> Result<(), InvoiceError> {
+    if matches!(key.as_str(), "plumber_name" | "plumber_phone" | "plumber_address") {
+        validate_latin(&value, &key)?;
+    }
     let mut db = DB
     .lock()
     .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
     let conn = db
     .as_mut()
     .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
-
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                  rusqlite::params![key, value],
     )
     .map_err(|e| InvoiceError::DatabaseError(format!("Failed to set setting: {e}")))?;
-
     Ok(())
 }
 
 // ─────────────────────────────────────────────
-// Signature Commands (Phase 6.5)
+// Signature Commands (RESTORED)
 // ─────────────────────────────────────────────
-
 #[tauri::command]
 #[specta::specta]
 pub fn save_signature(
@@ -266,18 +269,13 @@ pub fn save_signature(
     .path()
     .app_data_dir()
     .map_err(|e| InvoiceError::IoError(format!("Path resolution error: {e}")))?;
-
     let dest_path = app_data_dir.join("signature.png");
-
     if !std::path::Path::new(&source_path).exists() {
         return Err(InvoiceError::IoError("Source file does not exist".into()));
     }
-
     std::fs::copy(&source_path, &dest_path)
     .map_err(|e| InvoiceError::IoError(format!("Failed to copy signature image: {e}")))?;
-
     set_setting("signature_path".to_string(), "signature.png".to_string())?;
-
     Ok(dest_path.to_string_lossy().to_string())
 }
 
@@ -295,4 +293,41 @@ pub fn get_signature_path(app_handle: tauri::AppHandle) -> Result<Option<String>
     } else {
         Ok(None)
     }
+}
+
+// ─────────────────────────────────────────────
+// Work Photo Command (Phase 6.5c)
+// ─────────────────────────────────────────────
+#[tauri::command]
+#[specta::specta]
+pub fn save_work_photo(
+    app_handle: tauri::AppHandle,
+    source_path: String,
+) -> Result<String, InvoiceError> {
+    let data_dir = app_handle
+    .path()
+    .app_data_dir()
+    .map_err(|e| InvoiceError::IoError(format!("Failed to get app data dir: {e}")))?;
+    let photos_dir = data_dir.join("photos");
+    std::fs::create_dir_all(&photos_dir)
+    .map_err(|e| InvoiceError::IoError(format!("Failed to create photos dir: {e}")))?;
+
+    let source = std::path::Path::new(&source_path);
+    let extension = source
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .unwrap_or("jpg");
+
+    let timestamp = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .map_err(|e| InvoiceError::IoError(format!("Failed to get timestamp: {e}")))?
+    .as_millis();
+
+    let filename = format!("photo_{}.{}", timestamp, extension);
+    let dest_path = photos_dir.join(&filename);
+
+    std::fs::copy(&source_path, &dest_path)
+    .map_err(|e| InvoiceError::IoError(format!("Failed to copy photo: {e}")))?;
+
+    Ok(dest_path.to_string_lossy().to_string())
 }

@@ -22,6 +22,12 @@ pub enum InvoiceError {
     #[error("Database error: {0}")]
     DatabaseError(String),
 
-    #[error("Client name contains Arabic characters. Only Latin script is allowed.")]
+    #[error("Client name is required.")]
     InvalidClientName,
+
+    #[error("Field cannot be empty: {0}")]
+    EmptyField(String),
+
+    #[error("Text contains Arabic characters. Only Latin script is allowed in field: {0}")]
+    InvalidLatinText(String),
 }

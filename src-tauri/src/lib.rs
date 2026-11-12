@@ -53,6 +53,7 @@ pub fn run() {
         db::set_setting,
         db::save_signature,
         db::get_signature_path,
+        db::save_work_photo, // <-- تمت الإضافة هنا
         db::parts::add_part,
         db::parts::get_parts,
         db::parts::update_part,
