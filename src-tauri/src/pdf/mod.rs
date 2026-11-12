@@ -1,10 +1,10 @@
-use printpdf::*;
-use printpdf::path::{PaintMode, WindingOrder};
-use tauri::{AppHandle, Manager};
 use crate::errors::InvoiceError;
 use crate::models::Invoice;
+use printpdf::path::{PaintMode, WindingOrder};
+use printpdf::*;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::{AppHandle, Manager};
 
 fn format_price(price: f64) -> String {
     let whole = price as i64;
@@ -36,6 +36,8 @@ fn draw_rect(layer: &PdfLayerReference, x1: f32, y1: f32, x2: f32, y2: f32, colo
     });
 }
 
+// TODO Commit 6: refactor to InvoiceLayoutParams struct (12 args after photo bytes)
+#[allow(clippy::too_many_arguments)]
 pub fn draw_invoice_layout(
     _doc: &PdfDocumentReference,
     layer: &PdfLayerReference,
@@ -64,8 +66,14 @@ pub fn draw_invoice_layout(
     layer.use_text(plumber_address, 10.0, Mm(20.0), Mm(256.0), font);
 
     // 2. Client Info
-    layer.use_text(&format!("Facturé à: {}", invoice.client_name), 12.0, Mm(20.0), Mm(240.0), font);
-    layer.use_text(&format!("Date: {}", date), 12.0, Mm(20.0), Mm(230.0), font);
+    layer.use_text(
+        format!("Facturé à: {}", invoice.client_name),
+        12.0,
+        Mm(20.0),
+        Mm(240.0),
+        font,
+    );
+    layer.use_text(format!("Date: {}", date), 12.0, Mm(20.0), Mm(230.0), font);
 
     // 3. Table Header
     draw_rect(layer, 20.0, 200.0, 190.0, 208.0, red.clone());
@@ -76,10 +84,18 @@ pub fn draw_invoice_layout(
     // 4. Items Loop (Text only, as per recent decision)
     let mut current_y: f32 = 195.0;
     for item in &invoice.items {
-        if current_y < 80.0 { break; }
+        if current_y < 80.0 {
+            break;
+        }
         layer.set_fill_color(black.clone());
         layer.use_text(&item.name, 12.0, Mm(25.0), Mm(current_y), font);
-        layer.use_text(&format_price(item.price), 12.0, Mm(160.0), Mm(current_y), font);
+        layer.use_text(
+            format_price(item.price),
+            12.0,
+            Mm(160.0),
+            Mm(current_y),
+            font,
+        );
         current_y -= 10.0;
     }
 
@@ -89,21 +105,52 @@ pub fn draw_invoice_layout(
 
     layer.set_fill_color(black.clone());
     layer.use_text("Sous-total:", 10.0, Mm(100.0), Mm(total_y), font);
-    layer.use_text(&format_price(items_total), 10.0, Mm(160.0), Mm(total_y), font);
+    layer.use_text(
+        format_price(items_total),
+        10.0,
+        Mm(160.0),
+        Mm(total_y),
+        font,
+    );
 
     total_y -= 8.0;
     layer.use_text("Main d'œuvre:", 10.0, Mm(100.0), Mm(total_y), font);
-    layer.use_text(&format_price(invoice.labor_fee), 10.0, Mm(160.0), Mm(total_y), font);
+    layer.use_text(
+        format_price(invoice.labor_fee),
+        10.0,
+        Mm(160.0),
+        Mm(total_y),
+        font,
+    );
 
     total_y -= 8.0;
     layer.use_text("Transport:", 10.0, Mm(100.0), Mm(total_y), font);
-    layer.use_text(&format_price(invoice.transport_fee), 10.0, Mm(160.0), Mm(total_y), font);
+    layer.use_text(
+        format_price(invoice.transport_fee),
+        10.0,
+        Mm(160.0),
+        Mm(total_y),
+        font,
+    );
 
     total_y -= 12.0;
-    draw_rect(layer, 120.0, total_y - 15.0, 190.0, total_y, dark_red.clone());
+    draw_rect(
+        layer,
+        120.0,
+        total_y - 15.0,
+        190.0,
+        total_y,
+        dark_red.clone(),
+    );
     layer.set_fill_color(white.clone());
     layer.use_text("TOTAL:", 12.0, Mm(125.0), Mm(total_y - 10.0), font);
-    layer.use_text(&format_price(invoice.total), 12.0, Mm(155.0), Mm(total_y - 10.0), font);
+    layer.use_text(
+        format_price(invoice.total),
+        12.0,
+        Mm(155.0),
+        Mm(total_y - 10.0),
+        font,
+    );
 
     // 6. Signature Image (at y=55)
     if let Some(path) = signature_path {
@@ -114,7 +161,11 @@ pub fn draw_invoice_layout(
                 let height_mm = (height_px as f32 / 300.0) * 25.4;
                 if height_mm > 0.0 {
                     let max_height_mm = 30.0;
-                    let scale_factor = if height_mm > max_height_mm { max_height_mm / height_mm } else { 1.0 };
+                    let scale_factor = if height_mm > max_height_mm {
+                        max_height_mm / height_mm
+                    } else {
+                        1.0
+                    };
                     let pdf_image = Image::from_dynamic_image(&dynamic_image);
                     let transform = ImageTransform {
                         translate_x: Some(Mm(20.0)),
@@ -143,7 +194,13 @@ pub fn draw_invoice_layout(
     layer.use_text("Merci de votre confiance", 8.0, Mm(20.0), Mm(7.0), font);
 
     // Center: Contact Email
-    layer.use_text("Contact: An-Yassu-kei@proton.me", 8.0, Mm(85.0), Mm(11.0), font);
+    layer.use_text(
+        "Contact: An-Yassu-kei@proton.me",
+        8.0,
+        Mm(85.0),
+        Mm(11.0),
+        font,
+    );
 
     // Right Side: QR Code
     if let Some(bytes) = developer_qr_bytes {
@@ -154,7 +211,11 @@ pub fn draw_invoice_layout(
             if height_mm > 0.0 {
                 // Scale QR to max 18mm height
                 let max_height_mm = 18.0;
-                let scale_factor = if height_mm > max_height_mm { max_height_mm / height_mm } else { 1.0 };
+                let scale_factor = if height_mm > max_height_mm {
+                    max_height_mm / height_mm
+                } else {
+                    1.0
+                };
                 let pdf_image = Image::from_dynamic_image(&dynamic_image);
                 let transform = ImageTransform {
                     translate_x: Some(Mm(170.0)),
@@ -181,19 +242,19 @@ pub fn generate_invoice_pdf(
     date: String,
 ) -> Result<String, InvoiceError> {
     let app_data_dir = app_handle
-    .path()
-    .app_data_dir()
-    .map_err(|_| InvoiceError::PdfGenerationFailed("Path resolution error".into()))?;
+        .path()
+        .app_data_dir()
+        .map_err(|_| InvoiceError::PdfGenerationFailed("Path resolution error".into()))?;
 
     // Fetch plumber info
     let plumber_name = crate::db::get_setting("plumber_name".to_string())?
-    .unwrap_or_else(|| "Plomberie".to_string());
-    let plumber_phone = crate::db::get_setting("plumber_phone".to_string())?
-    .unwrap_or_else(|| "".to_string());
-    let plumber_address = crate::db::get_setting("plumber_address".to_string())?
-    .unwrap_or_else(|| "".to_string());
+        .unwrap_or_else(|| "Plomberie".to_string());
+    let plumber_phone =
+        crate::db::get_setting("plumber_phone".to_string())?.unwrap_or_else(|| "".to_string());
+    let plumber_address =
+        crate::db::get_setting("plumber_address".to_string())?.unwrap_or_else(|| "".to_string());
     let signature_path = crate::db::get_setting("signature_path".to_string())?
-    .map(|p| app_data_dir.join(p).to_string_lossy().to_string());
+        .map(|p| app_data_dir.join(p).to_string_lossy().to_string());
 
     // Read QR image
     let developer_qr_bytes = std::fs::read("qr_code.png").ok();
@@ -201,8 +262,8 @@ pub fn generate_invoice_pdf(
     let (doc, page1, layer1) = PdfDocument::new("Invoice", Mm(210.0), Mm(297.0), "Layer 1");
     let current_layer = doc.get_page(page1).get_layer(layer1);
     let font = doc
-    .add_builtin_font(BuiltinFont::Helvetica)
-    .map_err(|e| InvoiceError::PdfGenerationFailed(format!("Font error: {}", e)))?;
+        .add_builtin_font(BuiltinFont::Helvetica)
+        .map_err(|e| InvoiceError::PdfGenerationFailed(format!("Font error: {}", e)))?;
 
     draw_invoice_layout(
         &doc,
@@ -219,16 +280,16 @@ pub fn generate_invoice_pdf(
 
     let invoices_dir = app_data_dir.join("invoices");
     fs::create_dir_all(&invoices_dir)
-    .map_err(|_| InvoiceError::PdfGenerationFailed("Directory creation error".into()))?;
+        .map_err(|_| InvoiceError::PdfGenerationFailed("Directory creation error".into()))?;
     let timestamp = SystemTime::now()
-    .duration_since(UNIX_EPOCH)
-    .map_err(|_| InvoiceError::PdfGenerationFailed("System time error".into()))?
-    .as_secs();
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| InvoiceError::PdfGenerationFailed("System time error".into()))?
+        .as_secs();
     let file_path = invoices_dir.join(format!("invoice_{}.pdf", timestamp));
     let file = fs::File::create(&file_path)
-    .map_err(|_| InvoiceError::PdfGenerationFailed("File creation error".into()))?;
+        .map_err(|_| InvoiceError::PdfGenerationFailed("File creation error".into()))?;
     let mut writer = std::io::BufWriter::new(file);
     doc.save(&mut writer)
-    .map_err(|_| InvoiceError::PdfGenerationFailed("PDF save error".into()))?;
+        .map_err(|_| InvoiceError::PdfGenerationFailed("PDF save error".into()))?;
     Ok(file_path.to_string_lossy().to_string())
 }
