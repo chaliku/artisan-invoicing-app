@@ -7,7 +7,6 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
-	greet: (name: string) => __TAURI_INVOKE<string>("greet", { name }),
 	currentDateDmy: () => typedError<string, InvoiceError>(__TAURI_INVOKE("current_date_dmy")),
 	saveInvoice: (payload: InvoicePayload, date: string) => typedError<number, InvoiceError>(__TAURI_INVOKE("save_invoice", { payload, date })),
 	saveAndGeneratePdf: (payload: InvoicePayload, date: string) => typedError<string, InvoiceError>(__TAURI_INVOKE("save_and_generate_pdf", { payload, date })),

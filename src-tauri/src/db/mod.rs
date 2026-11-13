@@ -95,7 +95,6 @@ pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> 
             })?;
     }
 
-    let _ = conn.execute("ALTER TABLE parts ADD COLUMN image_path TEXT;", []);
     let mut db = DB
         .lock()
         .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
