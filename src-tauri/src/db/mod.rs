@@ -17,17 +17,16 @@ pub fn validate_latin(text: &str, field_name: &str) -> Result<(), InvoiceError> 
     }
     Ok(())
 }
-
 pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> {
     let data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| InvoiceError::IoError(e.to_string()))?;
+    .path()
+    .app_data_dir()
+    .map_err(|e| InvoiceError::IoError(e.to_string()))?;
     std::fs::create_dir_all(&data_dir)
-        .map_err(|e| InvoiceError::IoError(format!("Failed to create data dir: {e}")))?;
+    .map_err(|e| InvoiceError::IoError(format!("Failed to create data dir: {e}")))?;
     let db_path = data_dir.join("plumber.db");
     let conn = rusqlite::Connection::open(&db_path)
-        .map_err(|e| InvoiceError::DatabaseError(format!("Failed to open DB: {e}")))?;
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to open DB: {e}")))?;
 
     conn.execute_batch(
         "
@@ -72,32 +71,55 @@ pub fn initialize_db(app_handle: &tauri::AppHandle) -> Result<(), InvoiceError> 
     // Commit 1 (E-01): drop work_photos, add 2 photo columns to invoices.
     // Idempotent: DROP IF EXISTS, PRAGMA check before ALTER (Decision #028).
     conn.execute("DROP TABLE IF EXISTS work_photos", [])
-        .map_err(|e| InvoiceError::DatabaseError(format!("Failed to drop work_photos: {e}")))?;
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to drop work_photos: {e}")))?;
 
     let invoice_cols: Vec<String> = conn
-        .prepare("SELECT name FROM pragma_table_info('invoices')")
-        .map_err(|e| InvoiceError::DatabaseError(format!("Failed to prepare table_info: {e}")))?
-        .query_map([], |row| row.get(0))
-        .map_err(|e| InvoiceError::DatabaseError(format!("Failed to query table_info: {e}")))?
-        .collect::<Result<Vec<String>, _>>()
-        .map_err(|e| InvoiceError::DatabaseError(format!("Failed to read invoice columns: {e}")))?;
+    .prepare("SELECT name FROM pragma_table_info('invoices')")
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to prepare table_info: {e}")))?
+    .query_map([], |row| row.get(0))
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to query table_info: {e}")))?
+    .collect::<Result<Vec<String>, _>>()
+    .map_err(|e| InvoiceError::DatabaseError(format!("Failed to read invoice columns: {e}")))?;
 
     if !invoice_cols.iter().any(|c| c == "before_photo_path") {
         conn.execute("ALTER TABLE invoices ADD COLUMN before_photo_path TEXT", [])
-            .map_err(|e| {
-                InvoiceError::DatabaseError(format!("Failed to add before_photo_path: {e}"))
-            })?;
+        .map_err(|e| {
+            InvoiceError::DatabaseError(format!("Failed to add before_photo_path: {e}"))
+        })?;
     }
     if !invoice_cols.iter().any(|c| c == "after_photo_path") {
         conn.execute("ALTER TABLE invoices ADD COLUMN after_photo_path TEXT", [])
-            .map_err(|e| {
-                InvoiceError::DatabaseError(format!("Failed to add after_photo_path: {e}"))
-            })?;
+        .map_err(|e| {
+            InvoiceError::DatabaseError(format!("Failed to add after_photo_path: {e}"))
+        })?;
+    }
+
+    // Commit 8 (Decision #016): migrate plumber_* → artisan_* settings.
+    // Idempotent on both sides: INSERT OR IGNORE copies only when the target
+    // key is absent, and the subsequent DELETE drops any legacy row whether
+    // it was just copied or had already been migrated in a prior boot.
+    for (old_key, new_key) in [
+        ("plumber_name", "artisan_name"),
+        ("plumber_phone", "artisan_phone"),
+        ("plumber_address", "artisan_address"),
+    ] {
+        conn.execute(
+            "INSERT OR IGNORE INTO settings (key, value) \
+SELECT ?1, value FROM settings WHERE key = ?2",
+params![new_key, old_key],
+        )
+        .map_err(|e| {
+            InvoiceError::DatabaseError(format!("Failed to migrate setting {old_key}: {e}"))
+        })?;
+        conn.execute("DELETE FROM settings WHERE key = ?1", params![old_key])
+        .map_err(|e| {
+            InvoiceError::DatabaseError(format!("Failed to drop legacy setting {old_key}: {e}"))
+        })?;
     }
 
     let mut db = DB
-        .lock()
-        .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
+    .lock()
+    .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
     *db = Some(conn);
     Ok(())
 }
@@ -242,18 +264,21 @@ pub fn get_setting(key: String) -> Result<Option<String>, InvoiceError> {
 #[tauri::command]
 #[specta::specta]
 pub fn set_setting(key: String, value: String) -> Result<(), InvoiceError> {
+    // Commit 8 (Decision #016, #033): profession joins the Latin-validated set.
+    // artisan_* replaces the legacy plumber_* keys post-migration. Signature
+    // path and parts_seed_version are internal strings and stay unvalidated.
     if matches!(
         key.as_str(),
-        "plumber_name" | "plumber_phone" | "plumber_address"
+                "artisan_name" | "artisan_phone" | "artisan_address" | "profession"
     ) {
         validate_latin(&value, &key)?;
     }
     let mut db = DB
-        .lock()
-        .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
+    .lock()
+    .map_err(|_| InvoiceError::IoError("DB lock poisoned".into()))?;
     let conn = db
-        .as_mut()
-        .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
+    .as_mut()
+    .ok_or_else(|| InvoiceError::DatabaseError("Database not initialized".into()))?;
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                  rusqlite::params![key, value],

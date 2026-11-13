@@ -10,21 +10,26 @@
   let errorMessage = $state("");
   let successMessage = $state("");
 
-  let plumberName = $state("");
-  let plumberPhone = $state("");
-  let plumberAddress = $state("");
+  let artisanName = $state("");
+  let artisanProfession = $state("Plombier");
+  let artisanPhone = $state("");
+  let artisanAddress = $state("");
   let isSavingInfo = $state(false);
 
   onMount(async () => {
-    const nameRes = await commands.getSetting("plumber_name");
-    if (nameRes.status === "ok" && nameRes.data) plumberName = nameRes.data;
+    const nameRes = await commands.getSetting("artisan_name");
+    if (nameRes.status === "ok" && nameRes.data) artisanName = nameRes.data;
 
-    const phoneRes = await commands.getSetting("plumber_phone");
-    if (phoneRes.status === "ok" && phoneRes.data) plumberPhone = phoneRes.data;
+    const profRes = await commands.getSetting("profession");
+    if (profRes.status === "ok" && profRes.data)
+      artisanProfession = profRes.data;
 
-    const addressRes = await commands.getSetting("plumber_address");
+    const phoneRes = await commands.getSetting("artisan_phone");
+    if (phoneRes.status === "ok" && phoneRes.data) artisanPhone = phoneRes.data;
+
+    const addressRes = await commands.getSetting("artisan_address");
     if (addressRes.status === "ok" && addressRes.data)
-      plumberAddress = addressRes.data;
+      artisanAddress = addressRes.data;
 
     const sigRes = await commands.getSignaturePath();
     if (sigRes.status === "ok" && sigRes.data) {
@@ -43,26 +48,35 @@
     return "فشل حفظ البيانات.";
   }
 
-  async function savePlumberInfo() {
+  async function saveArtisanInfo() {
     isSavingInfo = true;
     errorMessage = "";
     successMessage = "";
     try {
-      const nameRes = await commands.setSetting("plumber_name", plumberName);
+      const nameRes = await commands.setSetting("artisan_name", artisanName);
       if (nameRes.status === "error") {
         errorMessage = mapError(nameRes.error);
         return;
       }
 
-      const phoneRes = await commands.setSetting("plumber_phone", plumberPhone);
+      const profRes = await commands.setSetting(
+        "profession",
+        artisanProfession,
+      );
+      if (profRes.status === "error") {
+        errorMessage = mapError(profRes.error);
+        return;
+      }
+
+      const phoneRes = await commands.setSetting("artisan_phone", artisanPhone);
       if (phoneRes.status === "error") {
         errorMessage = mapError(phoneRes.error);
         return;
       }
 
       const addressRes = await commands.setSetting(
-        "plumber_address",
-        plumberAddress,
+        "artisan_address",
+        artisanAddress,
       );
       if (addressRes.status === "error") {
         errorMessage = mapError(addressRes.error);
@@ -122,8 +136,22 @@
       <label>اسم السباك / الشركة</label>
       <input
         type="text"
-        bind:value={plumberName}
-        placeholder="مثال: Plomberie Ahmed"
+        bind:value={artisanName}
+        placeholder="مثال: Dawud"
+        dir="ltr"
+      />
+      <small
+        style="color: #d16a6c; font-size: 0.8rem; margin-top: 4px; display: block;"
+      >
+        أحرف لاتينية فقط.
+      </small>
+    </div>
+    <div class="form-group">
+      <label>المهنة</label>
+      <input
+        type="text"
+        bind:value={artisanProfession}
+        placeholder="اكتب مهنتك (مثال: Plombier)"
         dir="ltr"
       />
       <small
@@ -136,7 +164,7 @@
       <label>رقم الهاتف</label>
       <input
         type="text"
-        bind:value={plumberPhone}
+        bind:value={artisanPhone}
         placeholder="0555 55 55 55"
         dir="ltr"
       />
@@ -150,7 +178,7 @@
       <label>العنوان</label>
       <input
         type="text"
-        bind:value={plumberAddress}
+        bind:value={artisanAddress}
         placeholder="Alger, Algérie"
         dir="ltr"
       />
@@ -162,7 +190,7 @@
     </div>
     <button
       class="btn-primary"
-      onclick={savePlumberInfo}
+      onclick={saveArtisanInfo}
       disabled={isSavingInfo}
     >
       {isSavingInfo ? "⏳ جاري الحفظ..." : "حفظ البيانات"}
